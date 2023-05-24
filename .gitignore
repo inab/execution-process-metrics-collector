@@ -1,2 +1,3 @@
 data/*
+data_cmd/*
 !data/.gitkeep
