@@ -116,7 +116,7 @@ function plotGraph() {
       # TCP count
       #set output dir_name . "/tcp-count.png"
       set title "TCP Connections Count\n" . title noenhanced
-      plot csv_filename using 1:4 with lines smooth unique lw 2 lt rgb "#ed8004" t "TCP Connection Count" axis x1y2
+      plot csv_filename using 1:6 with lines smooth unique lw 2 lt rgb "#ed8004" t "TCP Connection Count" axis x1y2
 
       # Thread count
       #set output dir_name . "/thread-count.png"
