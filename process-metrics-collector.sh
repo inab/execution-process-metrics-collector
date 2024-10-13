@@ -13,7 +13,7 @@ case "$scriptdir" in
     ;;
 esac
 
-# Import the plotGraph function
+# Import the plotGraph function and timestamp_format constant
 source "${scriptdir}"/plotGraph.sh
 
 # This global variable must be assigned later
@@ -38,8 +38,8 @@ function process_metrics_collector() {
   local current_time=$(date +"%Y_%m_%d-%H_%M")
   local dir_name="${reldatadir}/${current_time}-${pid}"
   # This global variable is initialized here
-  csv_filename="${dir_name}/metrics.csv"
-  local command_filename="${dir_name}/command.txt"
+  csv_filename="${dir_name}/metrics-${pid}.csv"
+  local command_filename="${dir_name}/command-${pid}.txt"
 
   # create data directory
   mkdir -p "$dir_name"
@@ -52,7 +52,7 @@ function process_metrics_collector() {
   echo "Writing data to CSV file $csv_filename..."
 
   # write CSV headers
-  echo "Time,Virt,Res,CPU,Memory,TCP Connections,Thread Count" > "$csv_filename"
+  echo "Time,PID,Virt,Res,CPU,Memory,TCP Connections,Thread Count" > "$csv_filename"
 
   # check if process exists
   kill -0 $pid > /dev/null 2>&1
@@ -66,13 +66,13 @@ function process_metrics_collector() {
 
     if [ $pid_exist == 0 ]; then
       # read cpu and mem percentages
-      local timestamp=$(date +"%Y-%m-%d %H:%M:%S")
+      local timestamp=$(date +"$timestamp_format")
       local cpu_mem_usage=$(top -b -n 1 | grep -w -E "^ *$pid" | awk '{print $5 "," $6 "," $9 "," $10}')
       local tcp_cons=$(lsof -i -a -p $pid -w | tail -n +2 | wc -l)
       local tcount=$(ps -o nlwp h $pid | tr -d ' ')
 
       # write CSV row
-      echo "$timestamp,$cpu_mem_usage,$tcp_cons,$tcount" >> $csv_filename
+      echo "$timestamp,$pid,$cpu_mem_usage,$tcp_cons,$tcount" >> $csv_filename
       sleep "$sleep_secs"
     fi
   done
