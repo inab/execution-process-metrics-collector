@@ -16,6 +16,11 @@ esac
 # Import the plotGraph function
 source "${scriptdir}"/process-metrics-collector.sh
 
+# Redefine process_metrics_collector to use newer implementation
+function process_metrics_collector() {
+  python "${scriptdir}"/process-metrics-collector.py "$@"
+}
+
 if [ "$0" == "${BASH_SOURCE[0]}" ] ; then
   if [ $# -eq 0 ]; then
     echo "ERROR: Command line not specified."
