@@ -71,7 +71,7 @@ def process_metrics_collector(pid: int, reldatadir: pathlib.Path, sleep_secs: fl
 
     recorded_pids = dict()
 
-    while p.is_running():
+    while p.is_running() and p.status() != psutil.STATUS_ZOMBIE:
         timestamp_str = datetime.datetime.now().strftime(timestamp_format)
         
         children_dicts = []
@@ -92,28 +92,30 @@ def process_metrics_collector(pid: int, reldatadir: pathlib.Path, sleep_secs: fl
             try:
                 
                 with child.oneshot():
-                    child_threads = child.threads()
-                    child_d = child.as_dict(
-                        attrs=[
-                            'cpu_times',
-                            'memory_full_info',
-                            'net_connections',
-                            'pid',
-                            'cpu_percent',
-                            'memory_percent',
-                            'num_threads',
-                            'cpu_num',
-                            'cmdline',
-                            'create_time',
-                        ],
-                    )
+                    # Skip zombie processes
+                    if child.is_running() and child.status() != psutil.STATUS_ZOMBIE:
+                        child_threads = child.threads()
+                        child_d = child.as_dict(
+                            attrs=[
+                                'cpu_times',
+                                'memory_full_info',
+                                'net_connections',
+                                'pid',
+                                'cpu_percent',
+                                'memory_percent',
+                                'num_threads',
+                                'cpu_num',
+                                'cmdline',
+                                'create_time',
+                            ],
+                        )
 
-                threads_cpu_num = set()
-                for thr in child_threads:
-                    threads_cpu_num.add(psutil.Process(thr.id).cpu_num() if thr.id != child_d["pid"] else child_d["cpu_num"])
-                child_d["threads_cpu_num"] = threads_cpu_num
+                        threads_cpu_num = set()
+                        for thr in child_threads:
+                            threads_cpu_num.add(psutil.Process(thr.id).cpu_num() if thr.id != child_d["pid"] else child_d["cpu_num"])
+                        child_d["threads_cpu_num"] = threads_cpu_num
 
-                children_dicts.append((child_d, mode_w))
+                        children_dicts.append((child_d, mode_w))
             except:
                 pass
 
