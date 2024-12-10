@@ -42,15 +42,6 @@ A subdirectory is created for each execution being inspected, whose name is base
   * `swap`: (Linux) amount of memory that has been swapped out to disk. It is a sign either of a memory hungry process or a process with memory leaks.
   * `cpu_num`: Number of unique CPU cores used by the process. For instance, if a process has 20 threads, but there are only available 4 processor cores, the value would be at most 4. The number of available processor cores is determined by the scheduler and the processor affinity (the cores where the process is allowed to run) attached to the process.
 
-  * Cumulative process user time.
-  * Cumulative process system time.
-  * Cumulative process user time, including children. 
-  * Cumulative process system time, including children.
-  * Percentage of I/O wait.
-  * User memory of the process.
-  * Swap memory of the process.
-  * Number of CPUs where the threads of the process are running.
-
 ## Visualization
 The resulting CSV file is translated to a graph image of `.pdf` type using `gnuplot`. This has to be installed (e.g. `apt install gnuplot` in Ubuntu Xenial onwards) before running this script. There is a single pdf, where its pages are separate graphs for all the above metrics, and a separate one containing all of them together for correlation.
 
