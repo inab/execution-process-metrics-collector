@@ -14,7 +14,7 @@ case "$scriptdir" in
 esac
 
 # Import the plotGraph function
-source "${scriptdir}"/process-metrics-collector.sh
+source "${scriptdir}"/plotGraph.sh
 
 # Redefine process_metrics_collector to use newer implementation
 function process_metrics_collector() {
@@ -22,12 +22,16 @@ function process_metrics_collector() {
 }
 
 if [ "$0" == "${BASH_SOURCE[0]}" ] ; then
-  if [ $# -eq 0 ]; then
-    echo "ERROR: Command line not specified."
+  if [ $# -lt 2 ]; then
+    echo "ERROR: Command line not properly specified."
     echo
-    echo "Usage: $(basename "$0") <command line to be run>"
+    echo "Usage: $(basename "$0") {metrics_dir} <command line to be run>"
     exit 1
   fi
+
+  # Save the path to the metrics directory
+  metrics_dir="$1"
+  shift
 
   # Execute the program
   "$@" &
@@ -35,7 +39,7 @@ if [ "$0" == "${BASH_SOURCE[0]}" ] ; then
   # process id to monitor
   pid=$!
 
-  process_metrics_collector "$pid" data_cmd 1
-  # draw graph
-  plotMyGraph
+  process_metrics_collector "$pid" "$metrics_dir" 1
+  # draw graphs (to be revamped)
+  plotGraph /dev/null
 fi

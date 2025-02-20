@@ -22,7 +22,7 @@ function plotMyGraph() {
   plotGraph "$csv_filename"
 }
 
-function process_metrics_collector() {
+function process_metrics_collector_original() {
   local pid="$1"
   local reldatadir="$2"
   local sleep_secs="$3"
@@ -89,7 +89,7 @@ if [ "$0" == "${BASH_SOURCE[0]}" ] ; then
   # process id to monitor
   pid="$1"
 
-  process_metrics_collector "$pid" data 1
+  process_metrics_collector_original "$pid" data 1
   # draw graph
   plotMyGraph
 fi

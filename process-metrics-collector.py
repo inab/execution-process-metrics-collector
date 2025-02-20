@@ -1,13 +1,55 @@
 #!/usr/bin/env python
 
+import copy
 import datetime
 import json
 import logging
 import pathlib
 import psutil
+import re
 import socket
 import time
 import sys
+
+def parse_cpuinfo(cpuinfo_filename: "str" = "/proc/cpuinfo") -> "Tuple[Mapping[str, CPUInfo], Mapping[str, Tuple[str, str]]]":
+	kvsplitter = re.compile(r"\s*:\s*")
+	
+	entries = []
+	curr_entry = dict()
+	cpu_hash = {}
+	processor2corecpu = {}
+	with open(cpuinfo_filename, mode="r", encoding="latin1") as cH:
+		for line in cH:
+			line = line.rstrip("\n")
+			tokens = kvsplitter.split(line)
+			if len(tokens) < 2:
+				entries.append(curr_entry)
+				physical_id = curr_entry.get("physical id")
+				processor = curr_entry.get("processor")
+				if physical_id in cpu_hash:
+					curr_cpu = cpu_hash[physical_id]
+				else:
+					curr_cpu = copy.copy(curr_entry)
+					curr_cpu["processors"] = []
+					cpu_hash[physical_id] = curr_cpu
+				curr_cpu["processors"].append(processor)
+				processor2corecpu[processor] = (physical_id, curr_entry.get("core id"))
+				curr_entry = dict()
+			else:
+				curr_entry[tokens[0]] = tokens if len(tokens) > 2 else tokens[1]
+	if curr_entry:
+		entries.append(curr_entry)
+		physical_id = curr_entry.get("physical id")
+		processor = curr_entry.get("processor")
+		if physical_id in cpu_hash:
+			curr_cpu = cpu_hash[physical_id]
+		else:
+			curr_cpu = copy.copy(curr_entry)
+			curr_cpu["processors"] = []
+		curr_cpu["processors"].append(processor)
+		processor2corecpu[processor] = (physical_id, curr_entry.get("core id"))
+
+	return cpu_hash, processor2corecpu
 
 def process_metrics_collector(pid: int, reldatadir: pathlib.Path, sleep_secs: float = 1, timestamp_format: str = "%Y-%m-%d %H:%M:%S"):
     # If the process does not exist, it will raise a psutil.NoSuchProcess exception
@@ -20,6 +62,26 @@ def process_metrics_collector(pid: int, reldatadir: pathlib.Path, sleep_secs: fl
     current_time = datetime.datetime.now()
     dir_name = reldatadir / f"{current_time.strftime('%Y_%m_%d-%H_%M')}-{pid}"
     dir_name.mkdir(parents=True, exist_ok=True)
+
+    cpu_hash , processor2corecpu = parse_cpuinfo()
+
+    cpu_details_filename = dir_name / "cpu_details.json"
+    with cpu_details_filename.open(mode="w", encoding="utf-8") as cdF:
+        json.dump(list(cpu_hash.values()), cdF, indent=4)
+
+    processor_topology = [
+        {
+            "processor_id": processor_id,
+            "cpu_id": physid_core[0],
+            "core_id": physid_core[1],
+        }
+        for processor_id, physid_core in processor2corecpu.items()
+    ]
+
+    core_affinity_filename = dir_name / "core_affinity.json"
+    with core_affinity_filename.open(mode="w", encoding="utf-8") as caF:
+        json.dump(processor_topology, caF, indent=4)
+
 
     reference_pid_filename = dir_name / "reference_pid.txt"
     with reference_pid_filename.open(mode="w", encoding="utf-8") as cF:
@@ -41,7 +103,10 @@ def process_metrics_collector(pid: int, reldatadir: pathlib.Path, sleep_secs: fl
         "IO",
         "uss",
         "swap",
+        "processor_num",
+        "core_num",
         "cpu_num",
+        "process_status",
     ]
 
     pids_filename = dir_name / "pids.txt"
@@ -61,6 +126,8 @@ def process_metrics_collector(pid: int, reldatadir: pathlib.Path, sleep_secs: fl
         "Time",
         "numpids",
         "numthreads",
+        "maxprocessors",
+        "maxcores",
         "maxcpus",
         "sumuss",
         "sumswap",
@@ -107,19 +174,33 @@ def process_metrics_collector(pid: int, reldatadir: pathlib.Path, sleep_secs: fl
                                 'cpu_num',
                                 'cmdline',
                                 'create_time',
+                                'status',
                             ],
                         )
 
+                        threads_processor_num = set()
+                        threads_core_num = set()
                         threads_cpu_num = set()
                         for thr in child_threads:
-                            threads_cpu_num.add(psutil.Process(thr.id).cpu_num() if thr.id != child_d["pid"] else child_d["cpu_num"])
+                            processor_id = str(psutil.Process(thr.id).cpu_num() if thr.id != child_d["pid"] else child_d["cpu_num"])
+                            threads_processor_num.add(processor_id)
+
+                            unambiguous_core_id = processor2corecpu[processor_id]
+                            threads_core_num.add(unambiguous_core_id)
+                            threads_cpu_num.add(unambiguous_core_id[0])
+
+                        child_d["threads_processor_num"] = threads_processor_num
+                        child_d["threads_core_num"] = threads_core_num
                         child_d["threads_cpu_num"] = threads_cpu_num
 
                         children_dicts.append((child_d, mode_w))
-            except:
+            except Exception as e:
+                logging.exception("FIXME: Unexpected exception, please report developers")
                 pass
 
         # Second pass, print all
+        unique_processors = set()
+        unique_cores = set()
         unique_cpus = set()
         sumuss = 0
         sumswap = 0
@@ -174,11 +255,16 @@ def process_metrics_collector(pid: int, reldatadir: pathlib.Path, sleep_secs: fl
                     str(c_cpu.iowait),
                     str(c_mem.uss),
                     str(c_mem.swap),
+                    str(len(child_d["threads_processor_num"])),
+                    str(len(child_d["threads_core_num"])),
                     str(len(child_d["threads_cpu_num"])),
+                    str(child_d["status"]),
                 )
 
                 # Aggregated statistics
                 # unique_cpus.add(child_d["cpu_num"])
+                unique_processors.update(child_d["threads_processor_num"])
+                unique_cores.update(child_d["threads_core_num"])
                 unique_cpus.update(child_d["threads_cpu_num"])
                 sumuss += c_mem.uss
                 sumswap += c_mem.swap
@@ -187,7 +273,7 @@ def process_metrics_collector(pid: int, reldatadir: pathlib.Path, sleep_secs: fl
                 print(",".join(metrics), file=cH)
 
         with agg_metrics.open(mode="a", encoding="utf-8") as cH:
-            print("\t".join((timestamp_str, str(len(children_dicts)), str(sumthreads), str(len(unique_cpus)), str(sumuss), str(sumswap))), file=cH)
+            print("\t".join((timestamp_str, str(len(children_dicts)), str(sumthreads), str(len(unique_processors)), str(len(unique_cores)), str(len(unique_cpus)), str(sumuss), str(sumswap))), file=cH)
         
         time.sleep(sleep_secs)
 
