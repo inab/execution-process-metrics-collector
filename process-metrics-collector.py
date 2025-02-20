@@ -107,6 +107,12 @@ def process_metrics_collector(pid: int, reldatadir: pathlib.Path, sleep_secs: fl
         "core_num",
         "cpu_num",
         "process_status",
+        "read_count",
+        "write_count",
+        "read_bytes",
+        "write_bytes",
+        "read_chars",
+        "write_chars",
     ]
 
     pids_filename = dir_name / "pids.txt"
@@ -131,6 +137,12 @@ def process_metrics_collector(pid: int, reldatadir: pathlib.Path, sleep_secs: fl
         "maxcpus",
         "sumuss",
         "sumswap",
+        "sum_read_count",
+        "sum_write_count",
+        "sum_read_bytes",
+        "sum_write_bytes",
+        "sum_read_chars",
+        "sum_write_chars",
     ]
 
     with agg_metrics.open(mode="w", encoding="utf-8") as cH:
@@ -175,6 +187,7 @@ def process_metrics_collector(pid: int, reldatadir: pathlib.Path, sleep_secs: fl
                                 'cmdline',
                                 'create_time',
                                 'status',
+                                'io_counters',
                             ],
                         )
 
@@ -205,6 +218,12 @@ def process_metrics_collector(pid: int, reldatadir: pathlib.Path, sleep_secs: fl
         sumuss = 0
         sumswap = 0
         sumthreads = 0
+        sum_read_count = 0
+        sum_write_count = 0
+        sum_read_bytes = 0
+        sum_write_bytes = 0
+        sum_read_chars = 0
+        sum_write_chars = 0
         for (child_d, mode_w) in children_dicts:
             child_pid = str(child_d["pid"])
             create_time = child_d["create_time"]
@@ -239,6 +258,7 @@ def process_metrics_collector(pid: int, reldatadir: pathlib.Path, sleep_secs: fl
 
                 c_cpu = child_d["cpu_times"]
                 c_mem = child_d["memory_full_info"]
+                c_io = child_d["io_counters"]
                 metrics = (
                     timestamp_str,
                     child_pid,
@@ -259,6 +279,12 @@ def process_metrics_collector(pid: int, reldatadir: pathlib.Path, sleep_secs: fl
                     str(len(child_d["threads_core_num"])),
                     str(len(child_d["threads_cpu_num"])),
                     str(child_d["status"]),
+                    str(c_io.read_count),
+                    str(c_io.write_count),
+                    str(c_io.read_bytes),
+                    str(c_io.write_bytes),
+                    str(c_io.read_chars),
+                    str(c_io.write_chars),
                 )
 
                 # Aggregated statistics
@@ -269,11 +295,34 @@ def process_metrics_collector(pid: int, reldatadir: pathlib.Path, sleep_secs: fl
                 sumuss += c_mem.uss
                 sumswap += c_mem.swap
                 sumthreads += child_d["num_threads"]
+                sum_read_count += c_io.read_count
+                sum_write_count += c_io.write_count
+                sum_read_bytes += c_io.read_bytes
+                sum_write_bytes += c_io.write_bytes
+                sum_read_chars += c_io.read_chars
+                sum_write_chars += c_io.write_chars
                         
                 print(",".join(metrics), file=cH)
 
         with agg_metrics.open(mode="a", encoding="utf-8") as cH:
-            print("\t".join((timestamp_str, str(len(children_dicts)), str(sumthreads), str(len(unique_processors)), str(len(unique_cores)), str(len(unique_cpus)), str(sumuss), str(sumswap))), file=cH)
+            print("\t".join(
+                (
+                    timestamp_str,
+                    str(len(children_dicts)),
+                    str(sumthreads),
+                    str(len(unique_processors)),
+                    str(len(unique_cores)),
+                    str(len(unique_cpus)),
+                    str(sumuss),
+                    str(sumswap),
+                    str(sum_read_count),
+                    str(sum_write_count),
+                    str(sum_read_bytes),
+                    str(sum_write_bytes),
+                    str(sum_read_chars),
+                    str(sum_write_chars),
+                )
+            ), file=cH)
         
         time.sleep(sleep_secs)
 
