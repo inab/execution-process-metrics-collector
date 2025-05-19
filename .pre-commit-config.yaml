@@ -1,0 +1,48 @@
+fail_fast: true
+
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.4.0
+    hooks:
+      # This one has been added to fail fast on syntax errors
+      # before running expensive pylint
+      - id: check-ast
+        types_or:
+          - python
+          - pyi
+        exclude: "/(site-packages|development-[^/]*|docs|node_modules|__pycache__|\\..*)/$"
+      - id: check-json
+      - id: check-yaml
+        types: [file]
+        files: \.(yaml|yml)$
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    # Ruff version.
+    rev: v0.11.10
+    hooks:
+      # Run the linter.
+      - id: ruff-check
+# Main problem: python executable path, used to find the environment, is hardcoded
+  - repo: https://github.com/pre-commit/mirrors-mypy.git
+    rev: v1.15.0
+    hooks:
+      - id: mypy
+        alias: mirrormypy
+        exclude: "/(site-packages|development-[^/]*|docs|node_modules|__pycache__|\\..*)/$"
+        require_serial: true
+        entry: env PYTHONPATH=. mypy
+        args: [--strict, --show-error-codes, --no-warn-unused-ignores, --python-executable, .full13/bin/python]
+  - repo: https://github.com/koalaman/shellcheck-precommit.git
+    rev: v0.10.0
+    hooks:
+      - id: shellcheck
+        #args: [--format,json]
+        stages: [manual]
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    # Ruff version.
+    rev: v0.11.10
+    hooks:
+      # Run the formatter.
+      - id: ruff-format
+        args: [--diff]
+      - id: ruff-format
+        stages: [manual]

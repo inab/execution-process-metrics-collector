@@ -11,7 +11,14 @@ A subdirectory is created for each execution being inspected, whose name is base
 
 * `pids.txt`: A tabular file containing when each descendant process being spawned was created and the assigned pid.
 
+  * `Time`: Sample timestamp (first time the process was detected).
+  * `PID`: Process id.
+  * `create_time`: When the process was created.
+  * `PPID`: Parent process id. It is a '-' for the root process being monitored.
+  * `ppid_create_time`: When the parent process was created. It is a '-' for the root process being monitored.
+
 * `agg_metrics.tsv`: A tabular file containing the time series of aggregated metrics.
+
   * Timestamp.
   * Number of pids monitored in that moment.
   * Number of threads.
@@ -35,7 +42,7 @@ A subdirectory is created for each execution being inspected, whose name is base
 * `metrics-{pid}_{create_time}.csv`: A comma-separated values file containing the time series of metrics associated to the process **{pid}** which was created at **{create_time}**. The documentation is based on [psutil.Process.memory_info](https://psutil.readthedocs.io/en/latest/#psutil.Process.memory_info), [psutil.Process.cpu_percent](https://psutil.readthedocs.io/en/latest/#psutil.Process.cpu_percent), [psutil.Process.memory_percent](https://psutil.readthedocs.io/en/latest/#psutil.Process.memory_percent), [psutil.Process.num_threads](https://psutil.readthedocs.io/en/latest/#psutil.Process.num_threads), [psutil.Process.cpu_times](https://psutil.readthedocs.io/en/latest/#psutil.Process.cpu_times) and [psutil.Process.memory_full_info](https://psutil.readthedocs.io/en/latest/#psutil.Process.memory_full_info).
 
   * `Time`: Sample timestamp.
-  * `PID`: Process pid.
+  * `PID`: Process id.
   * `Virt`: aka "Virtual Memory Size", this is the total amount of virtual memory used by the process. On UNIX it matches `top`‘s VIRT column. On Windows this is an alias for pagefile field and it matches "Mem Usage" "VM Size" column of `taskmgr.exe`.
   * `Res`: aka "Resident Set Size", this is the non-swapped physical memory a process has used. On UNIX it matches `top`‘s RES column. On Windows this is an alias for wset field and it matches "Mem Usage" column of `taskmgr.exe`.
   * `CPU`: Return a float representing the process CPU utilization as a percentage which can also be > 100.0 in case of a process running multiple threads on different CPUs.
