@@ -198,6 +198,13 @@ def analyse_list_of_processes(
                             del container_data_rw[i_c_t_t]
 
                     children_dicts.append((child_d, mode_w))
+                elif mode_w == "w" and child_pid_int in recorded_pids:
+                    # Keeping the internal structures tidied up
+                    del recorded_pids[child_pid_int]
+        except psutil.NoSuchProcess:
+            # Keeping the internal structures tidied up
+            if mode_w == "w" and child_pid_int in recorded_pids:
+                del recorded_pids[child_pid_int]
         except Exception:
             logging.exception("FIXME: Unexpected exception, please report developers")
             pass
@@ -361,7 +368,8 @@ def process_metrics_collector(
             if len(docker_prev_pids) > 0:
                 for prev_pid in docker_prev_pids:
                     parent_pid = docker_following_pids.pop(prev_pid)
-                    del docker_followed_pids[parent_pid]
+                    if parent_pid in docker_followed_pids:
+                        del docker_followed_pids[parent_pid]
 
             # Sorting in place by date
             if len(container_data) > 1:
