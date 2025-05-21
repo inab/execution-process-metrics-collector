@@ -1,2 +1,5 @@
 psutil
 docker
+pandas
+networkx
+matplotlib

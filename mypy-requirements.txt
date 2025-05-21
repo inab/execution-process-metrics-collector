@@ -1,2 +1,4 @@
 types-docker
 types-psutil
+pandas-stubs
+types-networkx
