@@ -98,7 +98,7 @@ def metrics_aggregator(
         raise Exception()
 
     with reference_pid_filename.open(mode="r", encoding="utf-8") as rF:
-        reference_pid = int(rF.readline())
+        reference_pid = float(rF.readline())
 
     sampling_period_filename = series_dir / SAMPLING_PERIOD_FILENAME
     if not sampling_period_filename.is_file():
@@ -106,7 +106,7 @@ def metrics_aggregator(
         raise Exception()
 
     with sampling_period_filename.open(mode="r", encoding="utf-8") as sF:
-        sampling_period_seconds = int(sF.readline())
+        sampling_period_seconds = float(sF.readline())
 
     cpu_details_filename = series_dir / CPU_DETAILS_FILENAME
     if not cpu_details_filename.is_file():
