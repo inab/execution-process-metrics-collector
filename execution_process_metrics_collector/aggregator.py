@@ -246,6 +246,16 @@ Generated on {datetime.datetime.now().astimezone().isoformat()}\
     axes[0][1].xaxis.set_major_formatter(
         lambda x, pos: timedelta_noday_formatter(pd.Timedelta(x))
     )
+    for container in axes[0][0].containers:
+        print(f"container {container}")
+        axes[0][0].bar_label(container, padding=10)
+    for container in axes[0][1].containers:
+        print(f"container {container}")
+        axes[0][1].bar_label(
+            container,
+            padding=10,
+            fmt=lambda x: timedelta_noday_formatter(pd.Timedelta(x)),
+        )
 
     # Call graph
     matplotlib.use("pdf")
