@@ -1,0 +1,1 @@
+["docker", "stats", "--no-trunc", "--format", "{{.MemPerc}}", "b1209799cc362593472cbadce4a9057b230e931f58d8fde16783b4ada07f0809"]

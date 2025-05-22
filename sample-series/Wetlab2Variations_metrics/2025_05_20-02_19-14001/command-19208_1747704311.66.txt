@@ -1,0 +1,1 @@
+bwa mem -M -p -t 2 -R @RG\tID:H947YADXX\tSM:NA12878\tPL:ILLUMINA /var/lib/cwl/stg92060daf-59bc-420f-9ac9-4e5c5dbb6125/hs37d5.fa /var/lib/cwl/stgc5805d32-6a15-41d3-8370-c33179b0de42/U5c_CCGTCC_L001_R1_001.fastq.gz.trimmed.fastq.gz

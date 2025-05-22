@@ -1,0 +1,1 @@
+["java", "-jar", "/usr/GenomeAnalysisTK.jar", "-T", "PrintReads", "-dt", "NONE", "-R", "/GsEmMO/hs37d5.fa", "-I", "/var/lib/cwl/stgb9f89ab5-7694-4860-a982-a7856ba0d8a3/abc2.sorted.md.realigned.bam", "-o", "abc2.sorted.md.realigned.bqsr.bam", "-BQSR", "/GsEmMO/abc2.sorted.md.realigned.recalibrated.grp"]

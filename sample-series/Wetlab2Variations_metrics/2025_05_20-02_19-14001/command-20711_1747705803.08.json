@@ -1,0 +1,1 @@
+["samtools", "sort", "--threads", "8", "-o", "abc2.sorted.bam", "/var/lib/cwl/stg53ff65fe-82fc-4b24-a37e-d24ed95b8a1a/abc2.sam"]

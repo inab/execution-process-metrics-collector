@@ -1,0 +1,1 @@
+/bin/bash /usr/local/bin/picard CreateSequenceDictionary R=/var/lib/cwl/stgcf092df1-d7a1-44de-8520-3bac1a013eae/hs37d5.fa O=hs37d5.dict

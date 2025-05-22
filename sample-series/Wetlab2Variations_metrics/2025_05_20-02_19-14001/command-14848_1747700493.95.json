@@ -1,0 +1,1 @@
+["/usr/local/bin/python", "/usr/local/bin/cutadapt", "--interleaved", "-j", "0", "--error-rate", "0.2", "--overlap", "6", "-o", "U5c_CCGTCC_L001_R1_001.fastq.gz.trimmed.fastq.gz", "/var/lib/cwl/stg5a7174f4-f21a-463b-85b3-d028ac09668b/U5c_CCGTCC_L001_R1_001.fastq.gz", "/var/lib/cwl/stg1c2ebb4e-4a5b-403b-aea6-44eefd6a3be3/U5c_CCGTCC_L001_R2_001.fastq.gz"]

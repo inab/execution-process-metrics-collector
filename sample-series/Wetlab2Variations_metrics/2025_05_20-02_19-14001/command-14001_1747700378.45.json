@@ -1,0 +1,1 @@
+["python", "WfExS-backend.py", "-L", "workflow_examples/local_config.yaml", "staged-workdir", "offline-exec", "01a1db90-1508-4bad-beb7-7f7989838542"]

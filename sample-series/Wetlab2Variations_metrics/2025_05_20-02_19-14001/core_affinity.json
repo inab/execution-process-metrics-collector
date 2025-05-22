@@ -1,0 +1,42 @@
+[
+    {
+        "processor_id": "0",
+        "cpu_id": "0",
+        "core_id": "0"
+    },
+    {
+        "processor_id": "1",
+        "cpu_id": "0",
+        "core_id": "1"
+    },
+    {
+        "processor_id": "2",
+        "cpu_id": "0",
+        "core_id": "2"
+    },
+    {
+        "processor_id": "3",
+        "cpu_id": "0",
+        "core_id": "3"
+    },
+    {
+        "processor_id": "4",
+        "cpu_id": "0",
+        "core_id": "0"
+    },
+    {
+        "processor_id": "5",
+        "cpu_id": "0",
+        "core_id": "1"
+    },
+    {
+        "processor_id": "6",
+        "cpu_id": "0",
+        "core_id": "2"
+    },
+    {
+        "processor_id": "7",
+        "cpu_id": "0",
+        "core_id": "3"
+    }
+]

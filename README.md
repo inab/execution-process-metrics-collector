@@ -1,5 +1,8 @@
-# execution-process-metrics-collector
-A python program and a set of bash scripts to monitor, collect, and visualize metrics of a given Linux process or command line, and its descendants.
+# Execution Process Metrics Collector
+
+A set of python programs and a set of bash scripts to monitor, collect, and digest metrics of a given Linux process or command line, and its descendants.
+
+These programs have been initially developed for ELIXIR STEERS.
 
 ## Files created and values collected by `process-metrics-collector.py`
 
@@ -8,6 +11,8 @@ This python program uses [psutil](https://github.com/giampaolo/psutil) library t
 A subdirectory is created for each execution being inspected, whose name is based on when the sample collection started and the process. Each subdirectory has next files:
 
 * `reference_pid.txt`: The pid of the main process being inspected.
+
+* `sampling-rate-seconds.txt`: The sampling rate, in seconds (usually 1).
 
 * `pids.txt`: A tabular file containing when each descendant process being spawned was created and the assigned pid.
 
@@ -72,7 +77,78 @@ A subdirectory is created for each execution being inspected, whose name is base
 
 * `core_affinity.json`: Parsed information derived from `/proc/cpuinfo`, which provides the list of processors, as well as the ids of the physical core and CPU where they are.
 
-## Visualization
+You have a sample directory obtained from measuring a workflow execution using WfExS-backend workflow orchestrator at
+[sample-series/Wetlab2Variations_metrics/2025_05_20-02_19-14001](sample-series/Wetlab2Variations_metrics/2025_05_20-02_19-14001).
+
+The command line is something like:
+
+```bash
+./execution-metrics-collector.sh {base_metrics_directory} {command line} {and} {parameters}
+```
+
+which in its code is just running the command in background, getting the `pid` of the process and running next line with `sample_period` equals to 1 second:
+
+```bash
+python process-metrics-collector.py {pid} {base_metrics_directory} {sample_period}
+```
+
+For instance, the sample directory was obtained just running next command line:
+
+```bash
+~/projects/execution-process-metrics-collector/execution-metrics-collector.sh ~/projects/execution-process-metrics-collector/Wetlab2Variations_metrics python WfExS-backend.py -L workflow_examples/local_config.yaml staged-workdir offline-exec 01a1db90-1508-4bad-beb7-7f7989838542
+```
+
+## Digestion
+
+The program `tdp-finder.py` helps to obtain the TDP of a processor, using the gathered metadata stored at `cpu_details.json` within the series directory.
+
+Repository https://github.com/felixsteinke/cpu-spec-dataset contains at
+[dataset](https://github.com/felixsteinke/cpu-spec-dataset/tree/main/dataset) subdirectory several tables in CSV format with
+this and other details for many Intel, AMD and Ampere processors.
+
+For instance:
+
+```bash
+git clone https://github.com/felixsteinke/cpu-spec-dataset
+python tdp-finder.py sample-series/Wetlab2Variations_metrics/2025_05_20-02_19-14001/ cpu-spec-dataset/dataset/intel-cpus.csv 
+```
+
+```
+TDP => 28.0 W
+```
+
+The program `metrics-aggregator.py` is an initial proof of concept to digest the gathered process tree time series. As it tries
+computing the Wh of each part being executed, it needs the TDP (Thermal Design Power) from the CPU.
+
+For instance, getting all the consumptions from main steps of a workflow execution (which was using docker for its steps)
+and it was collected, would be:
+
+```bash
+python metrics-aggregator.py sample-series/Wetlab2Variations_metrics/2025_05_20-02_19-14001/ dest_directory 28.0 "docker run"
+```
+
+```
+8 docker run jlaitinen/lftpalpine unique process id => 1747700411.64_14234 seconds core => 4432.7 Watts second => 31028.899999999998 Watts hour => 8.61913888888889
+11 docker run quay.io/biocontainers/samtools:1.3.1--5 unique process id => 1747700460.91_14462 seconds core => 2289.6 Watts second => 16027.199999999999 Watts hour => 4.452
+15 docker run quay.io/biocontainers/cutadapt:1.18--py36h14c3975_1 unique process id => 1747700493.64_14760 seconds core => 47402.8 Watts second => 331819.60000000003 Watts hour => 92.17211111111112
+28 docker run quay.io/biocontainers/picard:2.18.25--0 unique process id => 1747700608.04_15216 seconds core => 2001.7 Watts second => 14011.9 Watts hour => 3.8921944444444443
+32 docker run quay.io/biocontainers/bwa:0.7.17--h84994c4_5 unique process id => 1747700632.46_15945 seconds core => 332468.30000000005 Watts second => 2327278.1000000006 Watts hour => 646.4661388888891
+35 docker run jlaitinen/lftpalpine unique process id => 1747704216.72_18987 seconds core => 7506.6 Watts second => 52546.200000000004 Watts hour => 14.596166666666669
+38 docker run quay.io/biocontainers/bwa:0.7.17--h84994c4_5 unique process id => 1747704311.5_19163 seconds core => 267387.39999999997 Watts second => 1871711.7999999998 Watts hour => 519.9199444444444
+41 docker run quay.io/biocontainers/samtools:1.3.1--5 unique process id => 1747705802.95_20626 seconds core => 22526.8 Watts second => 157687.6 Watts hour => 43.80211111111111
+44 docker run quay.io/biocontainers/picard:2.18.25--0 unique process id => 1747705879.32_20820 seconds core => 23607.9 Watts second => 165255.30000000002 Watts hour => 45.904250000000005
+48 docker run broadinstitute/gatk3:3.6-0 unique process id => 1747706089.46_21177 seconds core => 125245.5 Watts second => 876718.5 Watts hour => 243.53291666666667
+51 docker run broadinstitute/gatk3:3.6-0 unique process id => 1747707464.95_22167 seconds core => 22418.600000000002 Watts second => 156930.2 Watts hour => 43.591722222222224
+54 docker run broadinstitute/gatk3:3.6-0 unique process id => 1747707680.85_22476 seconds core => 166045.69999999998 Watts second => 1162319.9 Watts hour => 322.8666388888889
+57 docker run broadinstitute/gatk3:3.6-0 unique process id => 1747708718.81_23312 seconds core => 97068.7 Watts second => 679480.9 Watts hour => 188.74469444444446
+60 docker run broadinstitute/gatk3:3.6-0 unique process id => 1747709607.25_24083 seconds core => 47602.8 Watts second => 333219.60000000003 Watts hour => 92.561
+```
+
+The `dest_directory` will also contain a couple of files `graph.pdf` and `graph.png` which would help to understand the topology of processes:
+
+![Sample process call graph](sample-charts/graph.png)
+
+## Visualization (outdated)
 The resulting CSV file is translated to a graph image of `.pdf` type using `gnuplot`. This has to be installed (e.g. `apt install gnuplot` in Ubuntu Xenial onwards) before running this script. There is a single pdf, where its pages are separate graphs for all the above metrics, and a separate one containing all of them together for correlation.
 
 ## License

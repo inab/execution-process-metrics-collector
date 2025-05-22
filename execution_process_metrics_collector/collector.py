@@ -36,6 +36,7 @@ if TYPE_CHECKING:
 CPU_DETAILS_FILENAME: "Final[str]" = "cpu_details.json"
 CORE_AFFINITY_FILENAME: "Final[str]" = "core_affinity.json"
 REFERENCE_PID_FILENAME: "Final[str]" = "reference_pid.txt"
+SAMPLING_PERIOD_FILENAME: "Final[str]" = "sampling-period-seconds.txt"
 PIDS_FILENAME: "Final[str]" = "pids.txt"
 AGGREGATION_METRICS_FILENAME: "Final[str]" = "agg_metrics.tsv"
 
@@ -266,6 +267,10 @@ def process_metrics_collector(
     reference_pid_filename = dir_name / REFERENCE_PID_FILENAME
     with reference_pid_filename.open(mode="w", encoding="utf-8") as cF:
         cF.write(str(pid))
+
+    sampling_period_filename = dir_name / SAMPLING_PERIOD_FILENAME
+    with sampling_period_filename.open(mode="w", encoding="utf-8") as sF:
+        sF.write(str(sleep_secs))
 
     metrics_cols = [
         "Time",

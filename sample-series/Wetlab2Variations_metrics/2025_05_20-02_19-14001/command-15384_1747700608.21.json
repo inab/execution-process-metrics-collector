@@ -1,0 +1,1 @@
+["/usr/local/bin/java", "-Xms512m", "-Xmx1g", "-jar", "/usr/local/share/picard-2.18.25-0/picard.jar", "CreateSequenceDictionary", "R=/var/lib/cwl/stgcf092df1-d7a1-44de-8520-3bac1a013eae/hs37d5.fa", "O=hs37d5.dict"]

@@ -1,0 +1,1 @@
+docker stats --no-trunc --format {{.MemPerc}} 137fc0c2a91ffb48082c0e6663791788a00b7060198a0a51bd8c7a50a6bd5566

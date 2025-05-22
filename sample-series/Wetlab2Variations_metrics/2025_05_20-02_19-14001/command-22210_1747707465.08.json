@@ -1,0 +1,1 @@
+["java", "-jar", "/usr/GenomeAnalysisTK.jar", "-T", "IndelRealigner", "-R", "/GsEmMO/hs37d5.fa", "-I", "/var/lib/cwl/stgce2e3c94-6d92-4f2f-8b92-bfce4631ae4a/abc2.sorted.md.bam", "-targetIntervals", "/var/lib/cwl/stgb1a47b9f-74ad-4348-b7b4-4d301dd61a19/rtc_intervals.list", "-dt", "NONE", "--maxReadsForRealignment", "200000", "-o", "abc2.sorted.md.realigned.bam"]

@@ -1,0 +1,1 @@
+gunzip -c -v /var/lib/cwl/stgce9f3af0-2e09-454e-a27f-78ef67222335/hs37d5.fa.gz
