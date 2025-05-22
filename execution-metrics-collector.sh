@@ -18,7 +18,11 @@ source "${scriptdir}"/plotGraph.sh
 
 # Redefine process_metrics_collector to use newer implementation
 function process_metrics_collector() {
-  python "${scriptdir}"/process-metrics-collector.py "$@"
+  if [ -f "${scriptdir}"/process-metrics-collector.py ] ; then
+    python "${scriptdir}"/process-metrics-collector.py "$@"
+  else
+    process-metrics-collector.py "$@"
+  fi
 }
 
 if [ "$0" == "${BASH_SOURCE[0]}" ] ; then
