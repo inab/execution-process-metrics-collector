@@ -18,6 +18,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <https://www.gnu.org/licenses/>.
 
+import datetime
 import json
 import logging
 import os.path
@@ -30,6 +31,7 @@ from typing import (
 
 if TYPE_CHECKING:
     from typing import (
+        MutableSequence,
         Optional,
         Sequence,
     )
@@ -80,6 +82,180 @@ def process_command(command: "Sequence[str]") -> "str":
                 break
 
     return retlabel
+
+
+def draw_tree(
+    pids: "pd.DataFrame",
+    pids_tree: "nx.DiGraph[str]",
+    outputs_dir: "pathlib.Path",
+    group_by_process_name: "Optional[str]",
+) -> "None":
+    # Part of this code came from https://networkx.org/documentation/latest/auto_examples/graph/plot_morse_trie.html#sphx-glr-auto-examples-graph-plot-morse-trie-py
+    for i, layer in enumerate(nx.topological_generations(pids_tree)):
+        for n in layer:
+            pids_tree.nodes[n]["layer"] = i
+    # pos = nx.multipartite_layout(pids_tree, subset_key="layer", align="horizontal")
+    pos = nx.multipartite_layout(pids_tree, subset_key="layer", align="vertical")
+    # Flip the layout so the root node is on top
+    for k in pos:
+        pos[k][-1] *= -1
+
+    # A4 in inches
+    # fig = plt.figure(figsize=(11.7,8.3))
+    # A3 in inches
+    fig = plt.figure(figsize=(16.6, 11.7), dpi=300, tight_layout=True)
+    plt.suptitle("Tasks call graph (tree disposition)")
+    plt.title("Generated on " + datetime.datetime.now().astimezone().isoformat())
+    ax = plt.gca()
+    ax.margins(0)
+    plt.axis("off")
+
+    if group_by_process_name is not None:
+        node_color = list(
+            map(
+                lambda command: GROUPED_BY_COLOR
+                if command.startswith(group_by_process_name)
+                else OTHER_COLOR,
+                pids["command"],
+            )
+        )
+    else:
+        node_color = None
+    nx.draw_networkx(
+        pids_tree,
+        pos=pos,
+        ax=ax,
+        with_labels=True,
+        labels=dict(zip(pids["node"], pids["command_label"])),
+        node_color=node_color,
+        # node_size=30,
+        font_size=8,
+    )
+
+    # Call graph
+    matplotlib.use("pdf")
+    fig.savefig(outputs_dir / "graph.pdf")
+
+    matplotlib.use("svg")
+    fig.savefig(outputs_dir / "graph.svg")
+
+    matplotlib.use("agg")
+    fig.savefig(outputs_dir / "graph.png")
+
+
+def draw_spiral(
+    pids: "pd.DataFrame",
+    pids_tree: "nx.DiGraph[str]",
+    outputs_dir: "pathlib.Path",
+    group_by_process_name: "Optional[str]",
+) -> "None":
+    pos = nx.spiral_layout(pids_tree, resolution=0.5, equidistant=True)
+
+    # A4 in inches
+    # fig = plt.figure(figsize=(11.7,8.3))
+    # A3 in inches
+    fig = plt.figure(figsize=(16.6, 11.7), dpi=300, tight_layout=True)
+    plt.suptitle("Tasks call graph (spiral disposition)")
+    plt.title("Generated on " + datetime.datetime.now().astimezone().isoformat())
+    ax = plt.gca()
+    ax.margins(0)
+    plt.axis("off")
+
+    if group_by_process_name is not None:
+        node_color = list(
+            map(
+                lambda command: GROUPED_BY_COLOR
+                if command.startswith(group_by_process_name)
+                else OTHER_COLOR,
+                pids["command"],
+            )
+        )
+    else:
+        node_color = None
+    nx.draw_networkx(
+        pids_tree,
+        pos=pos,
+        ax=ax,
+        with_labels=True,
+        labels=dict(zip(pids["node"], pids["command_label"])),
+        node_color=node_color,
+        # node_size=30,
+        font_size=8,
+    )
+
+    # Call graph
+    matplotlib.use("pdf")
+    fig.savefig(outputs_dir / "spiral-graph.pdf")
+
+    matplotlib.use("svg")
+    fig.savefig(outputs_dir / "spiral-graph.svg")
+
+    matplotlib.use("agg")
+    fig.savefig(outputs_dir / "spiral-graph.png")
+
+
+def timedelta_full_formatter(td: "pd.Timedelta") -> "str":
+    return str(td)
+
+
+def timedelta_noday_formatter(td: "pd.Timedelta") -> "str":
+    if td.components.days > 0:
+        return timedelta_full_formatter(td)
+
+    if td.components.milliseconds > 0:
+        return "{0:02d}:{1:02d}:{2:02d}.{3:03d}".format(
+            td.components.hours,
+            td.components.minutes,
+            td.components.seconds,
+            td.components.milliseconds,
+        )
+    else:
+        return "{0:02d}:{1:02d}:{2:02d}".format(
+            td.components.hours, td.components.minutes, td.components.seconds
+        )
+
+
+def draw_consumptions_chart(
+    node_consumptions: "pd.DataFrame", outputs_dir: "pathlib.Path"
+) -> "None":
+    # A4 in inches
+    # fig = plt.figure(figsize=(11.7,8.3))
+    # A3 in inches
+    fig = plt.figure(figsize=(16.6, 11.7), dpi=300, tight_layout=True)
+    ax = plt.gca()
+
+    # print(node_consumptions.head())
+
+    title = f"""\
+Consumptions and duration
+Generated on {datetime.datetime.now().astimezone().isoformat()}\
+"""
+    axes = node_consumptions.plot.barh(
+        x="task",
+        y=["W_h", "duration"],
+        title=title,
+        subplots=True,
+        sharex=False,
+        sharey=True,
+        layout=(1, 2),
+        ax=ax,
+    )  # type: ignore[call-overload]
+    # node_consumptions.plot.barh(x="task", y="W_h", ax=ax)
+
+    # ax.bar_label(node_consumptions["duration"])
+    axes[0][1].xaxis.set_major_formatter(
+        lambda x, pos: timedelta_noday_formatter(pd.Timedelta(x))
+    )
+
+    # Call graph
+    matplotlib.use("pdf")
+    fig.savefig(outputs_dir / "consumptions.pdf")
+
+    matplotlib.use("svg")
+    fig.savefig(outputs_dir / "consumptions.svg")
+
+    matplotlib.use("agg")
+    fig.savefig(outputs_dir / "consumptions.png")
 
 
 def metrics_aggregator(
@@ -190,6 +366,15 @@ def metrics_aggregator(
     )
     # Find the roots
     roots = pids[pids["subtree_root"]]["node"]
+
+    node_row_ids: "list[int]" = []
+    node_ids: "MutableSequence[str]" = []
+    node_labels: "MutableSequence[str]" = []
+    # node_rows: "MutableSequence[pd.Row]" = []
+    node_consumptions_in_Wh: "MutableSequence[float]" = []
+    node_consumptions_in_Ws: "MutableSequence[float]" = []
+    node_duration: "MutableSequence[pd.Timedelta]" = []
+    node_duration_in_s: "MutableSequence[float]" = []
     for node_id in roots:
         # Now, time to process all the associated statistics
         the_node_row = pids[pids["node"] == node_id]
@@ -198,71 +383,57 @@ def metrics_aggregator(
             metrics_list.append(pids[pids["node"] == child_id].full_stats.array[0])
         metrics = pd.concat(metrics_list)
 
+        duration = metrics["Time"].max() - metrics["Time"].min()
+        node_duration.append(duration)
+        duration_seconds = duration.seconds
+        node_duration_in_s.append(duration_seconds)
+
         grouped = metrics.groupby(["core_num"])
         samples_core = grouped["CPU"].sum().sum()
         seconds_core = samples_core * sampling_period_seconds
         w_s = tdp_in_w / num_cpu_cores * seconds_core
         w_h = w_s / 3600
 
+        node_row_id = the_node_row.index.values[0]
         command_label = the_node_row.command.array[0]
         # command_line = the_node_row.full_command.array[0]
         # print(f"{command_label} {node_id} {seconds_core} {w_s} {w_h} {command_line}")
         print(
-            f"{the_node_row.index.values[0]} {command_label.replace('\n', ' ')} unique process id => {node_id} seconds core => {seconds_core} Watts second => {w_s} Watts hour => {w_h}"
+            f"{node_row_id} {command_label.replace('\n', ' ')} unique process id => {node_id} seconds core => {seconds_core} Watts second => {w_s} Watts hour => {w_h}"
         )
+        node_row_ids.append(node_row_id)
+        node_ids.append(node_id)
+        node_label = command_label.replace("\n", " ")
+        if group_by_process_name is not None:
+            if node_label.startswith(group_by_process_name + " "):
+                node_label = node_label[len(group_by_process_name) + 1 :]
+        node_labels.append(str(node_row_id) + " " + node_label)
+        # node_rows.append(the_node_row)
+        node_consumptions_in_Wh.append(w_h)
+        node_consumptions_in_Ws.append(w_s)
 
         # print(f"Hola => {node_id} {nx.descendants(pids_tree, node_id)} {len(metrics)}")
 
-    # Part of this code came from https://networkx.org/documentation/latest/auto_examples/graph/plot_morse_trie.html#sphx-glr-auto-examples-graph-plot-morse-trie-py
-    for i, layer in enumerate(nx.topological_generations(pids_tree)):
-        for n in layer:
-            pids_tree.nodes[n]["layer"] = i
-    # pos = nx.multipartite_layout(pids_tree, subset_key="layer", align="horizontal")
-    pos = nx.multipartite_layout(pids_tree, subset_key="layer", align="vertical")
-    # Flip the layout so the root node is on top
-    for k in pos:
-        pos[k][-1] *= -1
-
-    # pos = nx.spiral_layout(pids_tree, resolution=0.5, equidistant=True)
-
-    # A4 in inches
-    # fig = plt.figure(figsize=(11.7,8.3))
-    # A3 in inches
-    fig = plt.figure(figsize=(16.6, 11.7), dpi=300, tight_layout=True)
-    ax = plt.gca()
-    ax.margins(0)
-    plt.axis("off")
-
-    if group_by_process_name is not None:
-        node_color = list(
-            map(
-                lambda command: GROUPED_BY_COLOR
-                if command.startswith(group_by_process_name)
-                else OTHER_COLOR,
-                pids["command"],
-            )
-        )
-    else:
-        node_color = None
-    nx.draw_networkx(
-        pids_tree,
-        pos=pos,
-        ax=ax,
-        with_labels=True,
-        labels=dict(zip(pids["node"], pids["command_label"])),
-        node_color=node_color,
-        # node_size=30,
-        font_size=8,
+    outputs_dir.mkdir(parents=True, exist_ok=True)
+    node_consumptions = pd.DataFrame(
+        data={
+            "id": node_ids,
+            "task": node_labels,
+            #    "row": node_rows,
+            "W_h": node_consumptions_in_Wh,
+            "W_s": node_consumptions_in_Ws,
+            "duration": node_duration,
+            "duration_in_s": node_duration_in_s,
+        },
+        index=node_row_ids,
     )
+
+    draw_consumptions_chart(node_consumptions, outputs_dir)
 
     outputs_dir.mkdir(parents=True, exist_ok=True)
 
-    # Call graph
-    matplotlib.use("pdf")
-    fig.savefig(outputs_dir / "graph.pdf")
-
-    matplotlib.use("agg")
-    fig.savefig(outputs_dir / "graph.png")
+    draw_tree(pids, pids_tree, outputs_dir, group_by_process_name)
+    draw_spiral(pids, pids_tree, outputs_dir, group_by_process_name)
 
 
 def main() -> "None":

@@ -144,9 +144,13 @@ python metrics-aggregator.py sample-series/Wetlab2Variations_metrics/2025_05_20-
 60 docker run broadinstitute/gatk3:3.6-0 unique process id => 1747709607.25_24083 seconds core => 47602.8 Watts second => 333219.60000000003 Watts hour => 92.561
 ```
 
-The `dest_directory` will also contain a couple of files `graph.pdf` and `graph.png` which would help to understand the topology of processes:
+The `dest_directory` will also contain the process call graph represented both as a tree (`graph.pdf`) and as a spiral (`spiral-graph.pdf`):
 
-![Sample process call graph](sample-charts/graph.png)
+![Sample process call graph (tree)](sample-charts/graph.png)![Sample process call graph (spiral)](sample-charts/spiral-graph.png)
+
+and a barplot representation of both task consumptions and duration:
+
+![Sample task consumptions and duration barplots](sample-charts/consumptions.png)
 
 ## Visualization (outdated)
 The resulting CSV file is translated to a graph image of `.pdf` type using `gnuplot`. This has to be installed (e.g. `apt install gnuplot` in Ubuntu Xenial onwards) before running this script. There is a single pdf, where its pages are separate graphs for all the above metrics, and a separate one containing all of them together for correlation.
