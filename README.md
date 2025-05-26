@@ -149,9 +149,9 @@ The `dest_directory` will also contain the process call graph represented both a
 
 ![Sample process call graph (tree)](sample-charts/graph.svg)![Sample process call graph (spiral)](sample-charts/spiral-graph.svg)
 
-and a barplot representation of both task consumptions and duration:
+a barplot representation of both task consumptions and duration and an horizontal lollipop representing the task executions relative start, duration and end:
 
-![Sample task consumptions and duration barplots](sample-charts/consumptions.svg)
+![Sample task consumptions and duration barplots](sample-charts/consumptions.svg)![Sample task executions lollipop](sample-charts/lollipop.svg)
 
 ## Visualization (outdated)
 The resulting CSV file is translated to a graph image of `.pdf` type using `gnuplot`. This has to be installed (e.g. `apt install gnuplot` in Ubuntu Xenial onwards) before running this script. There is a single pdf, where its pages are separate graphs for all the above metrics, and a separate one containing all of them together for correlation.

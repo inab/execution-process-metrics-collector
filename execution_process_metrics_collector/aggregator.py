@@ -354,6 +354,144 @@ Generated on {datetime.datetime.now().astimezone().isoformat()}\
         fig.savefig(outputs_dir / "consumptions.png")
 
 
+def draw_lollipop_chart(
+    node_consumptions: "pd.DataFrame",
+    outputs_dir: "pathlib.Path",
+    width: "float" = 16.6,
+    height: "float" = 11.7,
+    dpi: "int" = 300,
+    font_size: "float" = 10,
+    first_sample_color: "str" = "skyblue",
+    last_sample_color: "str" = "lightgreen",
+    duration_color: "str" = "grey",
+) -> "None":
+    rc_context = {
+        "font.size": font_size * 1.7,  # controls default text sizes
+        "axes.titlesize": font_size * 1.5,  # fontsize of the axes title
+        "axes.labelsize": font_size * 1.5,  # fontsize of the x and y labels
+        "xtick.labelsize": font_size * 1.2,  # fontsize of the tick labels
+        "ytick.labelsize": font_size * 1.2,  # fontsize of the tick labels
+        "legend.fontsize": font_size,  # legend fontsize
+        "figure.titlesize": font_size * 2,  # fontsize of the figure title
+    }
+
+    with plt.rc_context(rc_context):
+        fig = plt.figure(figsize=(width, height), dpi=dpi, tight_layout=True)
+        ax = plt.gca()
+
+        # Heavily inspired on https://python-graph-gallery.com/184-lollipop-plot-with-2-groups/
+
+        # Reorder the dataframe by the first recorded sample
+        ordered_node_consumptions = node_consumptions.sort_values(by="first_sample")
+        first_first = ordered_node_consumptions["first_sample"].iloc[0]
+        ordered_node_consumptions["first_rel"] = (
+            ordered_node_consumptions["first_sample"] - first_first
+        ).values.astype("float64")
+        ordered_node_consumptions["last_rel"] = (
+            ordered_node_consumptions["last_sample"] - first_first
+        ).values.astype("float64")
+        candle_range = range(0, len(ordered_node_consumptions.index))
+
+        # The horizontal plot is made using the hline function
+        ordered_node_consumptions.plot(
+            kind="scatter",
+            x="first_rel",
+            y="task",
+            color=first_sample_color,
+            alpha=1,
+            label="Started",
+            ax=ax,
+        )
+        ordered_node_consumptions.plot(
+            kind="scatter",
+            x="last_rel",
+            y="task",
+            color=last_sample_color,
+            alpha=1,
+            label="Ended",
+            ax=ax,
+        )
+
+        ax.hlines(
+            y=candle_range,
+            xmin=ordered_node_consumptions["first_rel"],
+            xmax=ordered_node_consumptions["last_rel"],
+            color=duration_color,
+            alpha=0.4,
+            zorder=-1,
+        )
+
+        ax.xaxis.set_major_formatter(
+            lambda x, pos: timedelta_noday_formatter(pd.Timedelta(x))
+        )
+
+        labels = []
+        for i_task, first_rel, last_rel, duration in zip(
+            range(len(ordered_node_consumptions)),
+            ordered_node_consumptions["first_rel"],
+            ordered_node_consumptions["last_rel"],
+            ordered_node_consumptions["duration"],
+        ):
+            first_rel_td = pd.Timedelta(first_rel)
+            label = ax.text(
+                (first_rel_td + duration / 2).value,
+                i_task,
+                timedelta_noday_formatter(duration),
+                ha="center",
+                color=duration_color,
+                fontsize=font_size,
+            )
+            labels.append(label)
+
+            label = ax.text(
+                first_rel,
+                i_task,
+                timedelta_noday_formatter(first_rel_td),
+                ha="left",
+                color=first_sample_color,
+                fontsize=font_size,
+            )
+            labels.append(label)
+
+            label = ax.text(
+                last_rel,
+                i_task,
+                timedelta_noday_formatter(pd.Timedelta(last_rel)),
+                ha="right",
+                color=last_sample_color,
+                fontsize=font_size,
+            )
+            labels.append(label)
+
+        adjust_text(
+            labels,
+            ax=ax,
+            expand=(1.1, 1.5),
+            # arrowprops=dict(arrowstyle=f'->, head_width={font_size}, head_length={font_size}', color='red'),
+            arrowprops=dict(arrowstyle="->", color=duration_color),
+        )
+
+        # ax.scatter(ordered_node_consumptions['first_sample'], candle_range, color='skyblue', alpha=1, label='Started')
+        # ax.scatter(ordered_node_consumptions['last_sample'], candle_range, color='lightgreen', alpha=1 , label='Finished')
+        # ax.legend()
+        #
+        ## Add title and axis names
+        # ax.yticks(my_range, ordered_node_consumptions['task'])
+        # ax.title("Tasks groups timeline", loc='left')
+        # ax.xlabel('Value of the variables')
+        # ax.ylabel('Tasks')
+
+        # Call graph
+        matplotlib.use("pdf")
+        fig.savefig(outputs_dir / "timeline.pdf")
+
+        matplotlib.use("svg")
+        fig.savefig(outputs_dir / "timeline.svg")
+
+        matplotlib.use("agg")
+        fig.savefig(outputs_dir / "timeline.png")
+
+
 def metrics_aggregator(
     series_dir: "pathlib.Path",
     outputs_dir: "pathlib.Path",
@@ -379,6 +517,7 @@ def metrics_aggregator(
 
     with sampling_period_filename.open(mode="r", encoding="utf-8") as sF:
         sampling_period_seconds = float(sF.readline())
+        sampling_period_seconds_td = pd.Timedelta(sampling_period_seconds, "s")
 
     cpu_details_filename = series_dir / CPU_DETAILS_FILENAME
     if not cpu_details_filename.is_file():
@@ -471,6 +610,8 @@ def metrics_aggregator(
     node_consumptions_in_Ws: "MutableSequence[float]" = []
     node_duration: "MutableSequence[pd.Timedelta]" = []
     node_duration_in_s: "MutableSequence[float]" = []
+    node_first: "MutableSequence[pd.Timestamp]" = []
+    node_last: "MutableSequence[pd.Timestamp]" = []
     for node_id in roots:
         # Now, time to process all the associated statistics
         the_node_row = pids[pids["node"] == node_id]
@@ -479,7 +620,13 @@ def metrics_aggregator(
             metrics_list.append(pids[pids["node"] == child_id].full_stats.array[0])
         metrics = pd.concat(metrics_list)
 
-        duration = metrics["Time"].max() - metrics["Time"].min()
+        first_sample = metrics["Time"].min()
+        node_first.append(first_sample)
+
+        last_sample = metrics["Time"].max() + sampling_period_seconds_td
+        node_last.append(last_sample)
+
+        duration = last_sample - first_sample
         node_duration.append(duration)
         duration_seconds = duration.seconds
         node_duration_in_s.append(duration_seconds)
@@ -519,6 +666,8 @@ def metrics_aggregator(
             #    "row": node_rows,
             "W_h": node_consumptions_in_Wh,
             "W_s": node_consumptions_in_Ws,
+            "first_sample": node_first,
+            "last_sample": node_last,
             "duration": node_duration,
             "duration_in_s": node_duration_in_s,
         },
@@ -542,6 +691,11 @@ def metrics_aggregator(
         # height=11.7,
         # dpi=600,
         # font_size=10,
+    )
+
+    draw_lollipop_chart(
+        node_consumptions,
+        outputs_dir,
     )
 
     outputs_dir.mkdir(parents=True, exist_ok=True)
