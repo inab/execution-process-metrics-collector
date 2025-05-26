@@ -128,29 +128,30 @@ python metrics-aggregator.py sample-series/Wetlab2Variations_metrics/2025_05_20-
 ```
 
 ```
-8 docker run jlaitinen/lftpalpine unique process id => 1747700411.64_14234 seconds core => 4432.7 Watts second => 31028.899999999998 Watts hour => 8.61913888888889
-11 docker run quay.io/biocontainers/samtools:1.3.1--5 unique process id => 1747700460.91_14462 seconds core => 2289.6 Watts second => 16027.199999999999 Watts hour => 4.452
-15 docker run quay.io/biocontainers/cutadapt:1.18--py36h14c3975_1 unique process id => 1747700493.64_14760 seconds core => 47402.8 Watts second => 331819.60000000003 Watts hour => 92.17211111111112
-28 docker run quay.io/biocontainers/picard:2.18.25--0 unique process id => 1747700608.04_15216 seconds core => 2001.7 Watts second => 14011.9 Watts hour => 3.8921944444444443
-32 docker run quay.io/biocontainers/bwa:0.7.17--h84994c4_5 unique process id => 1747700632.46_15945 seconds core => 332468.30000000005 Watts second => 2327278.1000000006 Watts hour => 646.4661388888891
-35 docker run jlaitinen/lftpalpine unique process id => 1747704216.72_18987 seconds core => 7506.6 Watts second => 52546.200000000004 Watts hour => 14.596166666666669
-38 docker run quay.io/biocontainers/bwa:0.7.17--h84994c4_5 unique process id => 1747704311.5_19163 seconds core => 267387.39999999997 Watts second => 1871711.7999999998 Watts hour => 519.9199444444444
-41 docker run quay.io/biocontainers/samtools:1.3.1--5 unique process id => 1747705802.95_20626 seconds core => 22526.8 Watts second => 157687.6 Watts hour => 43.80211111111111
-44 docker run quay.io/biocontainers/picard:2.18.25--0 unique process id => 1747705879.32_20820 seconds core => 23607.9 Watts second => 165255.30000000002 Watts hour => 45.904250000000005
-48 docker run broadinstitute/gatk3:3.6-0 unique process id => 1747706089.46_21177 seconds core => 125245.5 Watts second => 876718.5 Watts hour => 243.53291666666667
-51 docker run broadinstitute/gatk3:3.6-0 unique process id => 1747707464.95_22167 seconds core => 22418.600000000002 Watts second => 156930.2 Watts hour => 43.591722222222224
-54 docker run broadinstitute/gatk3:3.6-0 unique process id => 1747707680.85_22476 seconds core => 166045.69999999998 Watts second => 1162319.9 Watts hour => 322.8666388888889
-57 docker run broadinstitute/gatk3:3.6-0 unique process id => 1747708718.81_23312 seconds core => 97068.7 Watts second => 679480.9 Watts hour => 188.74469444444446
-60 docker run broadinstitute/gatk3:3.6-0 unique process id => 1747709607.25_24083 seconds core => 47602.8 Watts second => 333219.60000000003 Watts hour => 92.561
+                     id                                               task         W_h        W_s        duration  duration_in_s
+8   1747700411.64_14234                             8 jlaitinen/lftpalpine    8.619139    31028.9 0 days 00:00:46             46
+11  1747700460.91_14462         11 quay.io/biocontainers/samtools:1.3.1--5    4.452000    16027.2 0 days 00:00:27             27
+15  1747700493.64_14760  15 quay.io/biocontainers/cutadapt:1.18--py36h1...   92.172111   331819.6 0 days 00:01:53            113
+28  1747700608.04_15216         28 quay.io/biocontainers/picard:2.18.25--0    3.892194    14011.9 0 days 00:00:21             21
+32  1747700632.46_15945    32 quay.io/biocontainers/bwa:0.7.17--h84994c4_5  646.466139  2327278.1 0 days 00:59:35           3575
+35  1747704216.72_18987                            35 jlaitinen/lftpalpine   14.596167    52546.2 0 days 00:01:12             72
+38   1747704311.5_19163    38 quay.io/biocontainers/bwa:0.7.17--h84994c4_5  519.919944  1871711.8 0 days 00:24:47           1487
+41  1747705802.95_20626         41 quay.io/biocontainers/samtools:1.3.1--5   43.802111   157687.6 0 days 00:01:13             73
+44  1747705879.32_20820         44 quay.io/biocontainers/picard:2.18.25--0   45.904250   165255.3 0 days 00:03:28            208
+48  1747706089.46_21177                      48 broadinstitute/gatk3:3.6-0  243.532917   876718.5 0 days 00:22:55           1375
+51  1747707464.95_22167                      51 broadinstitute/gatk3:3.6-0   43.591722   156930.2 0 days 00:03:34            214
+54  1747707680.85_22476                      54 broadinstitute/gatk3:3.6-0  322.866639  1162319.9 0 days 00:17:16           1036
+57  1747708718.81_23312                      57 broadinstitute/gatk3:3.6-0  188.744694   679480.9 0 days 00:14:44            884
+60  1747709607.25_24083                      60 broadinstitute/gatk3:3.6-0   92.561000   333219.6 0 days 00:04:01            241
 ```
 
 The `dest_directory` will also contain the process call graph represented both as a tree (`graph.pdf`) and as a spiral (`spiral-graph.pdf`):
 
-![Sample process call graph (tree)](sample-charts/graph.png)![Sample process call graph (spiral)](sample-charts/spiral-graph.png)
+![Sample process call graph (tree)](sample-charts/graph.svg)![Sample process call graph (spiral)](sample-charts/spiral-graph.svg)
 
 and a barplot representation of both task consumptions and duration:
 
-![Sample task consumptions and duration barplots](sample-charts/consumptions.png)
+![Sample task consumptions and duration barplots](sample-charts/consumptions.svg)
 
 ## Visualization (outdated)
 The resulting CSV file is translated to a graph image of `.pdf` type using `gnuplot`. This has to be installed (e.g. `apt install gnuplot` in Ubuntu Xenial onwards) before running this script. There is a single pdf, where its pages are separate graphs for all the above metrics, and a separate one containing all of them together for correlation.

@@ -39,7 +39,10 @@ if TYPE_CHECKING:
 import pandas as pd
 import networkx as nx
 import matplotlib
+import matplotlib.patheffects as PathEffects
 import matplotlib.pyplot as plt
+
+from adjustText import adjust_text  # type: ignore[import-untyped]
 
 
 from .collector import (
@@ -89,58 +92,73 @@ def draw_tree(
     pids_tree: "nx.DiGraph[str]",
     outputs_dir: "pathlib.Path",
     group_by_process_name: "Optional[str]",
+    width: "float" = 16.6,
+    height: "float" = 11.7,
+    dpi: "int" = 300,
+    font_size: "float" = 10,
 ) -> "None":
-    # Part of this code came from https://networkx.org/documentation/latest/auto_examples/graph/plot_morse_trie.html#sphx-glr-auto-examples-graph-plot-morse-trie-py
-    for i, layer in enumerate(nx.topological_generations(pids_tree)):
-        for n in layer:
-            pids_tree.nodes[n]["layer"] = i
-    # pos = nx.multipartite_layout(pids_tree, subset_key="layer", align="horizontal")
-    pos = nx.multipartite_layout(pids_tree, subset_key="layer", align="vertical")
-    # Flip the layout so the root node is on top
-    for k in pos:
-        pos[k][-1] *= -1
+    rc_context = {
+        "font.size": font_size * 1.7,  # controls default text sizes
+        "axes.titlesize": font_size * 1.5,  # fontsize of the axes title
+        "axes.labelsize": font_size * 1.5,  # fontsize of the x and y labels
+        "xtick.labelsize": font_size * 1.2,  # fontsize of the tick labels
+        "ytick.labelsize": font_size * 1.2,  # fontsize of the tick labels
+        "legend.fontsize": font_size,  # legend fontsize
+        "figure.titlesize": font_size * 2,  # fontsize of the figure title
+    }
 
-    # A4 in inches
-    # fig = plt.figure(figsize=(11.7,8.3))
-    # A3 in inches
-    fig = plt.figure(figsize=(16.6, 11.7), dpi=300, tight_layout=True)
-    plt.suptitle("Tasks call graph (tree disposition)")
-    plt.title("Generated on " + datetime.datetime.now().astimezone().isoformat())
-    ax = plt.gca()
-    ax.margins(0)
-    plt.axis("off")
+    with plt.rc_context(rc_context):
+        # Part of this code came from https://networkx.org/documentation/latest/auto_examples/graph/plot_morse_trie.html#sphx-glr-auto-examples-graph-plot-morse-trie-py
+        for i, layer in enumerate(nx.topological_generations(pids_tree)):
+            for n in layer:
+                pids_tree.nodes[n]["layer"] = i
+        # pos = nx.multipartite_layout(pids_tree, subset_key="layer", align="horizontal")
+        pos = nx.multipartite_layout(pids_tree, subset_key="layer", align="vertical")
+        # Flip the layout so the root node is on top
+        for k in pos:
+            pos[k][-1] *= -1
 
-    if group_by_process_name is not None:
-        node_color = list(
-            map(
-                lambda command: GROUPED_BY_COLOR
-                if command.startswith(group_by_process_name)
-                else OTHER_COLOR,
-                pids["command"],
+        # A4 in inches
+        # fig = plt.figure(figsize=(11.7,8.3))
+        # A3 in inches
+        fig = plt.figure(figsize=(width, height), dpi=dpi, tight_layout=True)
+        plt.suptitle("Tasks call graph (tree disposition)")
+        plt.title("Generated on " + datetime.datetime.now().astimezone().isoformat())
+        ax = plt.gca()
+        ax.margins(0)
+        plt.axis("off")
+
+        if group_by_process_name is not None:
+            node_color = list(
+                map(
+                    lambda command: GROUPED_BY_COLOR
+                    if command.startswith(group_by_process_name)
+                    else OTHER_COLOR,
+                    pids["command"],
+                )
             )
+        else:
+            node_color = None
+        nx.draw_networkx(
+            pids_tree,
+            pos=pos,
+            ax=ax,
+            with_labels=True,
+            labels=dict(zip(pids["node"], pids["command_label"])),
+            node_color=node_color,
+            # node_size=30,
+            font_size=8,
         )
-    else:
-        node_color = None
-    nx.draw_networkx(
-        pids_tree,
-        pos=pos,
-        ax=ax,
-        with_labels=True,
-        labels=dict(zip(pids["node"], pids["command_label"])),
-        node_color=node_color,
-        # node_size=30,
-        font_size=8,
-    )
 
-    # Call graph
-    matplotlib.use("pdf")
-    fig.savefig(outputs_dir / "graph.pdf")
+        # Call graph
+        matplotlib.use("pdf")
+        fig.savefig(outputs_dir / "graph.pdf")
 
-    matplotlib.use("svg")
-    fig.savefig(outputs_dir / "graph.svg")
+        matplotlib.use("svg")
+        fig.savefig(outputs_dir / "graph.svg")
 
-    matplotlib.use("agg")
-    fig.savefig(outputs_dir / "graph.png")
+        matplotlib.use("agg")
+        fig.savefig(outputs_dir / "graph.png")
 
 
 def draw_spiral(
@@ -148,50 +166,65 @@ def draw_spiral(
     pids_tree: "nx.DiGraph[str]",
     outputs_dir: "pathlib.Path",
     group_by_process_name: "Optional[str]",
+    width: "float" = 16.6,
+    height: "float" = 11.7,
+    dpi: "int" = 300,
+    font_size: "float" = 10,
 ) -> "None":
-    pos = nx.spiral_layout(pids_tree, resolution=0.5, equidistant=True)
+    rc_context = {
+        "font.size": font_size * 1.7,  # controls default text sizes
+        "axes.titlesize": font_size * 1.5,  # fontsize of the axes title
+        "axes.labelsize": font_size * 1.5,  # fontsize of the x and y labels
+        "xtick.labelsize": font_size * 1.2,  # fontsize of the tick labels
+        "ytick.labelsize": font_size * 1.2,  # fontsize of the tick labels
+        "legend.fontsize": font_size,  # legend fontsize
+        "figure.titlesize": font_size * 2,  # fontsize of the figure title
+    }
 
-    # A4 in inches
-    # fig = plt.figure(figsize=(11.7,8.3))
-    # A3 in inches
-    fig = plt.figure(figsize=(16.6, 11.7), dpi=300, tight_layout=True)
-    plt.suptitle("Tasks call graph (spiral disposition)")
-    plt.title("Generated on " + datetime.datetime.now().astimezone().isoformat())
-    ax = plt.gca()
-    ax.margins(0)
-    plt.axis("off")
+    with plt.rc_context(rc_context):
+        pos = nx.spiral_layout(pids_tree, resolution=0.5, equidistant=True)
 
-    if group_by_process_name is not None:
-        node_color = list(
-            map(
-                lambda command: GROUPED_BY_COLOR
-                if command.startswith(group_by_process_name)
-                else OTHER_COLOR,
-                pids["command"],
+        # A4 in inches
+        # fig = plt.figure(figsize=(11.7,8.3))
+        # A3 in inches
+        fig = plt.figure(figsize=(width, height), dpi=dpi, tight_layout=True)
+        plt.suptitle("Tasks call graph (spiral disposition)")
+        plt.title("Generated on " + datetime.datetime.now().astimezone().isoformat())
+        ax = plt.gca()
+        ax.margins(0)
+        plt.axis("off")
+
+        if group_by_process_name is not None:
+            node_color = list(
+                map(
+                    lambda command: GROUPED_BY_COLOR
+                    if command.startswith(group_by_process_name)
+                    else OTHER_COLOR,
+                    pids["command"],
+                )
             )
+        else:
+            node_color = None
+        nx.draw_networkx(
+            pids_tree,
+            pos=pos,
+            ax=ax,
+            with_labels=True,
+            labels=dict(zip(pids["node"], pids["command_label"])),
+            node_color=node_color,
+            # node_size=30,
+            # font_size=8,
         )
-    else:
-        node_color = None
-    nx.draw_networkx(
-        pids_tree,
-        pos=pos,
-        ax=ax,
-        with_labels=True,
-        labels=dict(zip(pids["node"], pids["command_label"])),
-        node_color=node_color,
-        # node_size=30,
-        font_size=8,
-    )
 
-    # Call graph
-    matplotlib.use("pdf")
-    fig.savefig(outputs_dir / "spiral-graph.pdf")
+        # Call graph
+        matplotlib.use("pdf")
+        fig.savefig(outputs_dir / "spiral-graph.pdf")
 
-    matplotlib.use("svg")
-    fig.savefig(outputs_dir / "spiral-graph.svg")
+        matplotlib.use("svg")
+        fig.savefig(outputs_dir / "spiral-graph.svg")
 
-    matplotlib.use("agg")
-    fig.savefig(outputs_dir / "spiral-graph.png")
+        matplotlib.use("agg")
+        fig.savefig(outputs_dir / "spiral-graph.png")
 
 
 def timedelta_full_formatter(td: "pd.Timedelta") -> "str":
@@ -216,56 +249,109 @@ def timedelta_noday_formatter(td: "pd.Timedelta") -> "str":
 
 
 def draw_consumptions_chart(
-    node_consumptions: "pd.DataFrame", outputs_dir: "pathlib.Path"
+    node_consumptions: "pd.DataFrame",
+    outputs_dir: "pathlib.Path",
+    width: "float" = 16.6,
+    height: "float" = 11.7,
+    dpi: "int" = 300,
+    font_size: "float" = 10,
 ) -> "None":
     # A4 in inches
     # fig = plt.figure(figsize=(11.7,8.3))
     # A3 in inches
-    fig = plt.figure(figsize=(16.6, 11.7), dpi=300, tight_layout=True)
-    ax = plt.gca()
+    # fig = plt.figure(figsize=(16.6, 11.7), dpi=300, tight_layout=True)
 
-    # print(node_consumptions.head())
+    rc_context = {
+        "font.size": font_size * 1.7,  # controls default text sizes
+        "axes.titlesize": font_size * 1.5,  # fontsize of the axes title
+        "axes.labelsize": font_size * 1.5,  # fontsize of the x and y labels
+        "xtick.labelsize": font_size * 1.2,  # fontsize of the tick labels
+        "ytick.labelsize": font_size * 1.2,  # fontsize of the tick labels
+        "legend.fontsize": font_size,  # legend fontsize
+        "figure.titlesize": font_size * 2,  # fontsize of the figure title
+    }
 
-    title = f"""\
+    with plt.rc_context(rc_context):
+        fig = plt.figure(figsize=(width, height), dpi=dpi, tight_layout=True)
+        ax = plt.gca()
+
+        # print(node_consumptions.head())
+
+        title = f"""\
 Consumptions and duration
 Generated on {datetime.datetime.now().astimezone().isoformat()}\
 """
-    axes = node_consumptions.plot.barh(
-        x="task",
-        y=["W_h", "duration"],
-        title=title,
-        subplots=True,
-        sharex=False,
-        sharey=True,
-        layout=(1, 2),
-        ax=ax,
-    )  # type: ignore[call-overload]
-    # node_consumptions.plot.barh(x="task", y="W_h", ax=ax)
+        axes = node_consumptions.plot.barh(
+            x="task",
+            y=["W_h", "duration"],
+            title=title,
+            subplots=True,
+            sharex=False,
+            sharey=True,
+            layout=(1, 2),
+            ax=ax,
+        )  # type: ignore[call-overload]
+        # node_consumptions.plot.barh(x="task", y="W_h", ax=ax)
 
-    # ax.bar_label(node_consumptions["duration"])
-    axes[0][1].xaxis.set_major_formatter(
-        lambda x, pos: timedelta_noday_formatter(pd.Timedelta(x))
-    )
-    for container in axes[0][0].containers:
-        print(f"container {container}")
-        axes[0][0].bar_label(container, padding=10)
-    for container in axes[0][1].containers:
-        print(f"container {container}")
-        axes[0][1].bar_label(
-            container,
-            padding=10,
-            fmt=lambda x: timedelta_noday_formatter(pd.Timedelta(x)),
+        axes[0][1].yaxis.set_major_formatter(
+            lambda x, pos: node_consumptions["task"].iloc[x].replace("/", "/\n")
+        )
+        axes[0][1].xaxis.set_major_formatter(
+            lambda x, pos: timedelta_noday_formatter(pd.Timedelta(x))
         )
 
-    # Call graph
-    matplotlib.use("pdf")
-    fig.savefig(outputs_dir / "consumptions.pdf")
+        labels1 = []
+        for i_task, task, W_h in zip(
+            range(len(node_consumptions)),
+            node_consumptions["task"],
+            node_consumptions["W_h"],
+        ):
+            label = axes[0][0].text(
+                W_h, i_task, W_h, va="center_baseline", color="black"
+            )
+            label.set_path_effects(
+                [PathEffects.withStroke(linewidth=2, foreground="white")]
+            )
+            labels1.append(label)
+        adjust_text(
+            labels1,
+            ax=axes[0][0],
+            only_move={"text": "x", "static": "x", "explode": "x", "pull": "x"},
+        )
 
-    matplotlib.use("svg")
-    fig.savefig(outputs_dir / "consumptions.svg")
+        labels2 = []
+        for i_task, task, duration in zip(
+            range(len(node_consumptions)),
+            node_consumptions["task"],
+            node_consumptions["duration"],
+        ):
+            label = axes[0][1].text(
+                duration.value,
+                i_task,
+                timedelta_noday_formatter(duration),
+                va="center_baseline",
+                color="black",
+            )
+            label.set_path_effects(
+                [PathEffects.withStroke(linewidth=2, foreground="white")]
+            )
+            labels2.append(label)
 
-    matplotlib.use("agg")
-    fig.savefig(outputs_dir / "consumptions.png")
+        adjust_text(
+            labels2,
+            ax=axes[0][1],
+            only_move={"text": "x", "static": "x", "explode": "x", "pull": "x"},
+        )
+
+        # Call graph
+        matplotlib.use("pdf")
+        fig.savefig(outputs_dir / "consumptions.pdf")
+
+        matplotlib.use("svg")
+        fig.savefig(outputs_dir / "consumptions.svg")
+
+        matplotlib.use("agg")
+        fig.savefig(outputs_dir / "consumptions.png")
 
 
 def metrics_aggregator(
@@ -406,11 +492,12 @@ def metrics_aggregator(
 
         node_row_id = the_node_row.index.values[0]
         command_label = the_node_row.command.array[0]
+
         # command_line = the_node_row.full_command.array[0]
         # print(f"{command_label} {node_id} {seconds_core} {w_s} {w_h} {command_line}")
-        print(
-            f"{node_row_id} {command_label.replace('\n', ' ')} unique process id => {node_id} seconds core => {seconds_core} Watts second => {w_s} Watts hour => {w_h}"
-        )
+        # print(
+        #    f"{node_row_id} {command_label.replace('\n', ' ')} unique process id => {node_id} seconds core => {seconds_core} Watts second => {w_s} Watts hour => {w_h}"
+        # )
         node_row_ids.append(node_row_id)
         node_ids.append(node_id)
         node_label = command_label.replace("\n", " ")
@@ -438,7 +525,24 @@ def metrics_aggregator(
         index=node_row_ids,
     )
 
-    draw_consumptions_chart(node_consumptions, outputs_dir)
+    with pd.option_context(
+        "display.max_rows",
+        None,
+        "display.max_columns",
+        None,
+        "display.expand_frame_repr",
+        False,
+    ):  # more options can be specified also
+        print(node_consumptions)
+
+    draw_consumptions_chart(
+        node_consumptions,
+        outputs_dir,
+        # width=33.2,
+        # height=11.7,
+        # dpi=600,
+        # font_size=10,
+    )
 
     outputs_dir.mkdir(parents=True, exist_ok=True)
 

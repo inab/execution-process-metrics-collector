@@ -3,3 +3,4 @@ docker
 pandas
 networkx
 matplotlib
+adjustText
