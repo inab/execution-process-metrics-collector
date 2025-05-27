@@ -357,7 +357,12 @@ def process_metrics_collector(
 
     docker_cli = None
     if match_docker:
-        docker_cli = docker.from_env()
+        try:
+            docker_cli = docker.from_env()
+        except docker.errors.DockerException:
+            logger.info(
+                "Docker service not reachable. Processes spawned using docker will not be properly tracked"
+            )
 
     recorded_pids: "MutableMapping[int, psutil.Process]" = dict()
 
