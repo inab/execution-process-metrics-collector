@@ -524,6 +524,15 @@ def process_metrics_collector(
                     parent_creation_timestamp = "-"
 
                 with pids_filename.open(mode="a", encoding="utf-8") as cH:
+                    if sys.version_info < (3, 11):
+                        matched = re.search(r"\:(\d\d)(?:\.\d+)?Z$", create_time)
+                        if matched is not None:
+                            create_time = (
+                                create_time[0 : matched.span()[0]]
+                                + ":"
+                                + matched.group(1)
+                                + "+00:00"
+                            )
                     creation_timestamp = datetime.datetime.fromtimestamp(
                         create_time
                     ).strftime(timestamp_format)
