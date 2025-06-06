@@ -391,11 +391,23 @@ def process_metrics_collector(
                         docker_prev_notpids.remove(container_pid)
                     else:
                         possible_docker_pids.add(container_pid)
+                        container_created = container.attrs["Created"]
+                        if sys.version_info < (3, 11):
+                            matched = re.search(
+                                r"\:(\d\d)(?:\.\d+)?Z$", container_created
+                            )
+                            if matched is not None:
+                                container_created = (
+                                    container_created[0 : matched.span()[0]]
+                                    + ":"
+                                    + matched.group(1)
+                                    + "+00:00"
+                                )
                         container_data.append(
                             (
                                 container.id,
                                 datetime.datetime.fromisoformat(
-                                    container.attrs["Created"]
+                                    container_created
                                 ).timestamp(),
                                 container.attrs["Config"].get("Image"),
                                 container_pid,
@@ -524,15 +536,6 @@ def process_metrics_collector(
                     parent_creation_timestamp = "-"
 
                 with pids_filename.open(mode="a", encoding="utf-8") as cH:
-                    if sys.version_info < (3, 11):
-                        matched = re.search(r"\:(\d\d)(?:\.\d+)?Z$", create_time)
-                        if matched is not None:
-                            create_time = (
-                                create_time[0 : matched.span()[0]]
-                                + ":"
-                                + matched.group(1)
-                                + "+00:00"
-                            )
                     creation_timestamp = datetime.datetime.fromtimestamp(
                         create_time
                     ).strftime(timestamp_format)
