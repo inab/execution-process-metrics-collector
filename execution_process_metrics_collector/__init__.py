@@ -23,4 +23,4 @@ __copyright__ = "© 2025 Barcelona Supercomputing Center (BSC), ES"
 __license__ = "GPL-3.0-or-later"
 
 # https://www.python.org/dev/peps/pep-0396/
-__version__ = "0.5.5"
+__version__ = "0.6.0"

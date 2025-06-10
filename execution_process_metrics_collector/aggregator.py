@@ -283,7 +283,7 @@ Generated on {datetime.datetime.now().astimezone().isoformat()}\
 """
         axes = node_consumptions.plot.barh(
             x="task",
-            y=["W_h", "duration"],
+            y=["joules", "duration"],
             title=title,
             subplots=True,
             sharex=False,
@@ -291,7 +291,7 @@ Generated on {datetime.datetime.now().astimezone().isoformat()}\
             layout=(1, 2),
             ax=ax,
         )  # type: ignore[call-overload]
-        # node_consumptions.plot.barh(x="task", y="W_h", ax=ax)
+        # node_consumptions.plot.barh(x="task", y="joules", ax=ax)
 
         axes[0][1].yaxis.set_major_formatter(
             lambda x, pos: node_consumptions["task"].iloc[x].replace("/", "/\n")
@@ -301,13 +301,13 @@ Generated on {datetime.datetime.now().astimezone().isoformat()}\
         )
 
         labels1 = []
-        for i_task, task, W_h in zip(
+        for i_task, task, joules in zip(
             range(len(node_consumptions)),
             node_consumptions["task"],
-            node_consumptions["W_h"],
+            node_consumptions["joules"],
         ):
             label = axes[0][0].text(
-                W_h, i_task, W_h, va="center_baseline", color="black"
+                joules, i_task, joules, va="center_baseline", color="black"
             )
             label.set_path_effects(
                 [PathEffects.withStroke(linewidth=2, foreground="white")]
@@ -527,7 +527,10 @@ def metrics_aggregator(
     with cpu_details_filename.open(mode="r", encoding="utf-8") as cF:
         cpu_details = json.load(cF)
 
+    # TODO, compute this per CPU
     num_cpu_cores = int(cpu_details[0]["cpu cores"])
+    num_cpu_processors = len(cpu_details[0]["processors"])
+    factor_cores_processors = float(num_cpu_cores) / float(num_cpu_processors)  # noqa: F841
 
     logger.info(
         f"Processing directory {series_dir.as_posix()} about pid {reference_pid}"
@@ -607,11 +610,18 @@ def metrics_aggregator(
     node_labels: "MutableSequence[str]" = []
     # node_rows: "MutableSequence[pd.Row]" = []
     node_consumptions_in_Wh: "MutableSequence[float]" = []
-    node_consumptions_in_Ws: "MutableSequence[float]" = []
+    node_consumptions_in_joules: "MutableSequence[float]" = []
     node_duration: "MutableSequence[pd.Timedelta]" = []
     node_duration_in_s: "MutableSequence[float]" = []
     node_first: "MutableSequence[pd.Timestamp]" = []
     node_last: "MutableSequence[pd.Timestamp]" = []
+
+    # The watts per core
+    w_per_core_per_hour = tdp_in_w / float(num_cpu_cores)
+    w_per_core_per_second = w_per_core_per_hour / 3600.0
+
+    logger.debug(f"W_c_h => {w_per_core_per_hour} , W_c_s => {w_per_core_per_second}")
+
     for node_id in roots:
         # Now, time to process all the associated statistics
         the_node_row = pids[pids["node"] == node_id]
@@ -631,14 +641,31 @@ def metrics_aggregator(
         duration_seconds = duration.seconds
         node_duration_in_s.append(duration_seconds)
 
-        grouped = metrics.groupby(["core_num"])
-        samples_core = grouped["CPU"].sum().sum()
-        seconds_core = samples_core * sampling_period_seconds
-        w_s = tdp_in_w / num_cpu_cores * seconds_core
-        w_h = w_s / 3600
+        # This is to normalize imputation of the sum of core usages in that sample
+        metrics["core_usage"] = (
+            metrics["CPU"]
+            * metrics["core_num"].astype(float)
+            / (metrics["processor_num"].astype(float) * 100)
+        )
+
+        # Number of seconds the implied cores were used
+        total_core_usage_seconds = metrics["core_usage"].sum() * sampling_period_seconds
+
+        # All the joules implied in the computation
+        w_s = joules = total_core_usage_seconds * w_per_core_per_second
+        # The watts hour
+        w_h = joules / 3600
+
+        # grouped = metrics.groupby(["core_num"])
+        # samples_core = grouped["CPU"].sum().sum()
+        # seconds_core = samples_core * sampling_period_seconds
+        # w_s = w_per_core * seconds_core
+        # w_h = w_s / 3600
 
         node_row_id = the_node_row.index.values[0]
         command_label = the_node_row.command.array[0]
+
+        logger.debug(f"{node_row_id} => {total_core_usage_seconds} <= {node_id}")
 
         # command_line = the_node_row.full_command.array[0]
         # print(f"{command_label} {node_id} {seconds_core} {w_s} {w_h} {command_line}")
@@ -654,7 +681,7 @@ def metrics_aggregator(
         node_labels.append(str(node_row_id) + " " + node_label)
         # node_rows.append(the_node_row)
         node_consumptions_in_Wh.append(w_h)
-        node_consumptions_in_Ws.append(w_s)
+        node_consumptions_in_joules.append(w_s)
 
         # print(f"Hola => {node_id} {nx.descendants(pids_tree, node_id)} {len(metrics)}")
 
@@ -665,7 +692,7 @@ def metrics_aggregator(
             "task": node_labels,
             #    "row": node_rows,
             "W_h": node_consumptions_in_Wh,
-            "W_s": node_consumptions_in_Ws,
+            "joules": node_consumptions_in_joules,
             "first_sample": node_first,
             "last_sample": node_last,
             "duration": node_duration,
@@ -684,6 +711,8 @@ def metrics_aggregator(
     ):  # more options can be specified also
         print(node_consumptions)
 
+    outputs_dir.mkdir(parents=True, exist_ok=True)
+
     draw_consumptions_chart(
         node_consumptions,
         outputs_dir,
@@ -697,8 +726,6 @@ def metrics_aggregator(
         node_consumptions,
         outputs_dir,
     )
-
-    outputs_dir.mkdir(parents=True, exist_ok=True)
 
     draw_tree(pids, pids_tree, outputs_dir, group_by_process_name)
     draw_spiral(pids, pids_tree, outputs_dir, group_by_process_name)
