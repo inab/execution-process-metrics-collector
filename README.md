@@ -64,6 +64,8 @@ A subdirectory is created for each execution being inspected, whose name is base
   * `processor_num`: Number of unique processors used by the process. For instance, if a process has 20 threads, but there are only available 4 processors, the value would be at most 4. The number of available processors is determined by the scheduler and the processor affinity (the processors where the process is allowed to run) attached to the process.
   * `core_num`: Number of unique CPU cores used by the process. For instance, if a process has 20 threads, but there are only available 4 processors which are in 2 different CPU cores, the value would be at most 2. The number of available CPU cores is indirectly determined by the scheduler and the processor affinity (the cores of the processors where the process is allowed to run) attached to the process.
   * `cpu_num`: Number of unique physical CPUs used by the process. For instance, if a process has 20 threads, but there are only available 4 processors which are in 2 different cores of the same physical CPU, the value would be 1. The number of available physical CPUs is indirectly determined by the scheduler and the processor affinity (the physical CPUs of the cores of the processors where the process is allowed to run) attached to the process.
+  * `processor_ids`: Ids of the CPU processors, separated by spaces. This could be needed for future, accurate computation of carbon footprint of the computation.
+  * `core_ids`: Ids of the CPU cores, separated by spaces. This could be needed for future, accurate computation of carbon footprint of the computation.
   * `cpu_ids`: Ids of the physical CPUs, separated by spaces. This is needed for future, accurate computation of carbon footprint of the computation.
   * `process_status`: String describing the process status.
   * `read_count`: the number of read operations performed (cumulative). This is supposed to count the number of read-related syscalls such as read() and pread() on UNIX.
@@ -78,7 +80,7 @@ A subdirectory is created for each execution being inspected, whose name is base
 * `core_affinity.json`: Parsed information derived from `/proc/cpuinfo`, which provides the list of processors, as well as the ids of the physical core and CPU where they are.
 
 You have a sample directory obtained from measuring a workflow execution using WfExS-backend workflow orchestrator at
-[sample-series/Wetlab2Variations_metrics/2025_05_20-02_19-14001](sample-series/Wetlab2Variations_metrics/2025_05_20-02_19-14001).
+[sample-series/Wetlab2Variations_metrics/2025_05_20-02_19-14001](sample-series/Wetlab2Variations_metrics/2025_05_20-02_19-14001) using an old version.
 
 The command line is something like:
 
@@ -128,21 +130,21 @@ python metrics-aggregator.py sample-series/Wetlab2Variations_metrics/2025_05_20-
 ```
 
 ```
-                     id                                               task         W_h        W_s        duration  duration_in_s
-8   1747700411.64_14234                             8 jlaitinen/lftpalpine    8.619139    31028.9 0 days 00:00:46             46
-11  1747700460.91_14462         11 quay.io/biocontainers/samtools:1.3.1--5    4.452000    16027.2 0 days 00:00:27             27
-15  1747700493.64_14760  15 quay.io/biocontainers/cutadapt:1.18--py36h1...   92.172111   331819.6 0 days 00:01:53            113
-28  1747700608.04_15216         28 quay.io/biocontainers/picard:2.18.25--0    3.892194    14011.9 0 days 00:00:21             21
-32  1747700632.46_15945    32 quay.io/biocontainers/bwa:0.7.17--h84994c4_5  646.466139  2327278.1 0 days 00:59:35           3575
-35  1747704216.72_18987                            35 jlaitinen/lftpalpine   14.596167    52546.2 0 days 00:01:12             72
-38   1747704311.5_19163    38 quay.io/biocontainers/bwa:0.7.17--h84994c4_5  519.919944  1871711.8 0 days 00:24:47           1487
-41  1747705802.95_20626         41 quay.io/biocontainers/samtools:1.3.1--5   43.802111   157687.6 0 days 00:01:13             73
-44  1747705879.32_20820         44 quay.io/biocontainers/picard:2.18.25--0   45.904250   165255.3 0 days 00:03:28            208
-48  1747706089.46_21177                      48 broadinstitute/gatk3:3.6-0  243.532917   876718.5 0 days 00:22:55           1375
-51  1747707464.95_22167                      51 broadinstitute/gatk3:3.6-0   43.591722   156930.2 0 days 00:03:34            214
-54  1747707680.85_22476                      54 broadinstitute/gatk3:3.6-0  322.866639  1162319.9 0 days 00:17:16           1036
-57  1747708718.81_23312                      57 broadinstitute/gatk3:3.6-0  188.744694   679480.9 0 days 00:14:44            884
-60  1747709607.25_24083                      60 broadinstitute/gatk3:3.6-0   92.561000   333219.6 0 days 00:04:01            241
+                     id                                               task       W_h    joules        first_sample         last_sample        duration  duration_in_s
+8   1747700411.64_14234                             8 jlaitinen/lftpalpine  0.000023  0.083231 2025-05-20 02:20:12 2025-05-20 02:20:59 0 days 00:00:47             47
+11  1747700460.91_14462         11 quay.io/biocontainers/samtools:1.3.1--5  0.000012  0.044520 2025-05-20 02:21:02 2025-05-20 02:21:30 0 days 00:00:28             28
+15  1747700493.64_14760  15 quay.io/biocontainers/cutadapt:1.18--py36h1...  0.000193  0.694440 2025-05-20 02:21:34 2025-05-20 02:23:28 0 days 00:01:54            114
+28  1747700608.04_15216         28 quay.io/biocontainers/picard:2.18.25--0  0.000006  0.020150 2025-05-20 02:23:29 2025-05-20 02:23:51 0 days 00:00:22             22
+32  1747700632.46_15945    32 quay.io/biocontainers/bwa:0.7.17--h84994c4_5  0.001796  6.464617 2025-05-20 02:23:53 2025-05-20 03:23:29 0 days 00:59:36           3576
+35  1747704216.72_18987                            35 jlaitinen/lftpalpine  0.000038  0.138433 2025-05-20 03:23:37 2025-05-20 03:24:50 0 days 00:01:13             73
+38   1747704311.5_19163    38 quay.io/biocontainers/bwa:0.7.17--h84994c4_5  0.001231  4.432096 2025-05-20 03:25:12 2025-05-20 03:50:00 0 days 00:24:48           1488
+41  1747705802.95_20626         41 quay.io/biocontainers/samtools:1.3.1--5  0.000075  0.269880 2025-05-20 03:50:04 2025-05-20 03:51:18 0 days 00:01:14             74
+44  1747705879.32_20820         44 quay.io/biocontainers/picard:2.18.25--0  0.000065  0.232261 2025-05-20 03:51:20 2025-05-20 03:54:49 0 days 00:03:29            209
+48  1747706089.46_21177                      48 broadinstitute/gatk3:3.6-0  0.000348  1.254288 2025-05-20 03:54:50 2025-05-20 04:17:46 0 days 00:22:56           1376
+51  1747707464.95_22167                      51 broadinstitute/gatk3:3.6-0  0.000063  0.226953 2025-05-20 04:17:46 2025-05-20 04:21:21 0 days 00:03:35            215
+54  1747707680.85_22476                      54 broadinstitute/gatk3:3.6-0  0.000460  1.656543 2025-05-20 04:21:22 2025-05-20 04:38:39 0 days 00:17:17           1037
+57  1747708718.81_23312                      57 broadinstitute/gatk3:3.6-0  0.000266  0.959036 2025-05-20 04:38:39 2025-05-20 04:53:24 0 days 00:14:45            885
+60  1747709607.25_24083                      60 broadinstitute/gatk3:3.6-0  0.000131  0.472472 2025-05-20 04:53:28 2025-05-20 04:57:30 0 days 00:04:02            242
 ```
 
 The `dest_directory` will also contain the process call graph represented both as a tree (`graph.pdf`) and as a spiral (`spiral-graph.pdf`):
