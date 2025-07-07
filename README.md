@@ -1,4 +1,4 @@
-# Execution Process Metrics Collector
+# `treecript`: Process tree metrics transcriptor (originally `Execution Process Metrics Collector`)
 
 A set of python programs and a set of bash scripts to monitor, collect, and digest metrics of a given Linux process or command line, and its descendants.
 
