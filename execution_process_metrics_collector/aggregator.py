@@ -422,7 +422,7 @@ def draw_lollipop_chart(
         )
 
         ax.xaxis.set_major_formatter(
-            lambda x, pos: timedelta_noday_formatter(pd.Timedelta(x))
+            lambda x, pos: timedelta_noday_formatter(pd.Timedelta(int(round(x))))
         )
 
         labels = []
@@ -517,7 +517,8 @@ def metrics_aggregator(
 
     with sampling_period_filename.open(mode="r", encoding="utf-8") as sF:
         sampling_period_seconds = float(sF.readline())
-        sampling_period_seconds_td = pd.Timedelta(sampling_period_seconds, "s")
+        sampling_period_milliseconds = int(round(sampling_period_seconds * 1000.0))
+        sampling_period_td = pd.Timedelta(sampling_period_milliseconds, "ms")
 
     cpu_details_filename = series_dir / CPU_DETAILS_FILENAME
     if not cpu_details_filename.is_file():
@@ -633,7 +634,7 @@ def metrics_aggregator(
         first_sample = metrics["Time"].min()
         node_first.append(first_sample)
 
-        last_sample = metrics["Time"].max() + sampling_period_seconds_td
+        last_sample = metrics["Time"].max() + sampling_period_td
         node_last.append(last_sample)
 
         duration = last_sample - first_sample

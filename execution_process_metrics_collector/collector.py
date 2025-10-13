@@ -46,6 +46,9 @@ if TYPE_CHECKING:
         Sequence,
         Set,
         Tuple,
+    )
+
+    from typing_extensions import (
         TypeAlias,
     )
 
