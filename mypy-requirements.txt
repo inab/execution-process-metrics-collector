@@ -3,3 +3,4 @@ types-psutil
 pandas-stubs
 types-networkx
 types-setuptools
+typing_extensions

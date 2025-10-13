@@ -34,6 +34,7 @@ if TYPE_CHECKING:
         MutableSequence,
         Optional,
         Sequence,
+        Union,
     )
 
 import pandas as pd
@@ -128,6 +129,7 @@ def draw_tree(
         ax.margins(0)
         plt.axis("off")
 
+        node_color: "Union[Sequence[str], str]"
         if group_by_process_name is not None:
             node_color = list(
                 map(
@@ -138,7 +140,7 @@ def draw_tree(
                 )
             )
         else:
-            node_color = None
+            node_color = OTHER_COLOR
         nx.draw_networkx(
             pids_tree,
             pos=pos,
@@ -194,6 +196,7 @@ def draw_spiral(
         ax.margins(0)
         plt.axis("off")
 
+        node_color: "Union[Sequence[str], str]"
         if group_by_process_name is not None:
             node_color = list(
                 map(
@@ -204,7 +207,7 @@ def draw_spiral(
                 )
             )
         else:
-            node_color = None
+            node_color = OTHER_COLOR
         nx.draw_networkx(
             pids_tree,
             pos=pos,
