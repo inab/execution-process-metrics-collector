@@ -22,15 +22,27 @@ repos:
       # Run the linter.
       - id: ruff-check
 # Main problem: python executable path, used to find the environment, is hardcoded
-  - repo: https://github.com/pre-commit/mirrors-mypy.git
-    rev: v1.15.0
+#  - repo: https://github.com/pre-commit/mirrors-mypy.git
+#    rev: v1.15.0
+#    hooks:
+#      - id: mypy
+#        alias: mirrormypy
+#        exclude: "/(site-packages|development-[^/]*|docs|node_modules|__pycache__|\\..*)/$"
+#        require_serial: true
+#        entry: env PYTHONPATH=. mypy
+#        args: [--strict, --show-error-codes, --no-warn-unused-ignores, --python-executable, .full13/bin/python]
+  - repo: local
     hooks:
       - id: mypy
-        alias: mirrormypy
+        name: Local MyPy
+        language: system
+        types_or:
+          - python
+          - pyi
         exclude: "/(site-packages|development-[^/]*|docs|node_modules|__pycache__|\\..*)/$"
         require_serial: true
-        entry: env PYTHONPATH=. mypy
-        args: [--strict, --show-error-codes, --no-warn-unused-ignores, --python-executable, .full13/bin/python]
+        entry: mypy
+        args: [--strict, --show-error-codes, --no-warn-unused-ignores]
   - repo: https://github.com/koalaman/shellcheck-precommit.git
     rev: v0.10.0
     hooks:
@@ -46,3 +58,8 @@ repos:
         args: [--diff]
       - id: ruff-format
         stages: [manual]
+  - repo: https://github.com/jmfernandez/pre-commit_mirrors-actionlint.git
+    rev: v1.7.1
+    hooks:
+      - id: actionlint
+
