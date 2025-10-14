@@ -135,7 +135,7 @@ jobs:
           title: Updated constraints (triggered on ${{ steps.timestamp.outputs.timestamp }} by ${{ github.sha }})
           branch: create-pull-request/patch-constraints
           add-paths: constraints-*.txt
-          delete-branch: true
+          delete-branch: false
           commit-message: "[create-pull-request] Automatically commit updated contents (constraints)"
       - name: Check outputs
         if: ${{ steps.cpr.outputs.pull-request-number }}
