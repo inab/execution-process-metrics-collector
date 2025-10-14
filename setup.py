@@ -69,6 +69,7 @@ setuptools.setup(
         ]
     },
     scripts=[
+        "execution-metrics-collector.py",
         "process-metrics-collector.py",
         "metrics-aggregator.py",
         "tdp-finder.py",

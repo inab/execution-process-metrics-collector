@@ -688,3 +688,19 @@ def main() -> "None":
             file=sys.stderr,
         )
         sys.exit(1)
+
+
+def main__commandline() -> "None":
+    if len(sys.argv) >= 3:
+        execution_metrics_collector(
+            sys.argv[2:],
+            pathlib.Path(sys.argv[1]),
+            sleep_secs=1,
+            match_docker=True,
+        )
+    else:
+        print(
+            f"Usage: {sys.argv[0]} {{results_dir}} <command line to be run>",
+            file=sys.stderr,
+        )
+        sys.exit(1)
