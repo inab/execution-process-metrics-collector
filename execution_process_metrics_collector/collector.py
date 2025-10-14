@@ -27,6 +27,7 @@ import pathlib
 import psutil
 import re
 import socket
+import subprocess
 import time
 import sys
 
@@ -246,6 +247,25 @@ def analyse_list_of_processes(
             pass
 
     return new_pid_pairs
+
+
+def execution_metrics_collector(
+    cmdline: "Sequence[str]",
+    reldatadir: "pathlib.Path",
+    sleep_secs: "float" = 1,
+    timestamp_format: "str" = "%Y-%m-%d %H:%M:%S",
+    match_docker: "bool" = False,
+) -> "None":
+    pop = subprocess.Popen(cmdline)
+    process_metrics_collector(
+        pop.pid,
+        reldatadir,
+        sleep_secs=sleep_secs,
+        timestamp_format=timestamp_format,
+        match_docker=match_docker,
+    )
+    # Just for completeness
+    pop.wait()
 
 
 def process_metrics_collector(
