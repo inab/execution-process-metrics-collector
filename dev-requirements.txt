@@ -5,3 +5,4 @@ twine
 mypy >= 1.1.1
 -r mypy-requirements.txt
 pytest
+pytest-cov

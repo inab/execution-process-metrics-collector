@@ -68,9 +68,9 @@ jobs:
  #       if: ${{ matrix.python-version == '3.6' }}
  #       with:
  #         extra_args: --all -c .pre-commit-config-gh-${{ matrix.python-version }}.yaml
-      - name: 'pytest (${{ matrix.python-version }})'
+      - name: 'pytest + coverage (${{ matrix.python-version }})'
         run: |
-          pytest
+          pytest --cov=execution_process_metrics_collector
       - name: Get transitive dependencies licences
         id: license_check_print_report
 #        uses: pilosus/action-pip-license-checker@v1.0.0
