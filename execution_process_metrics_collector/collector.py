@@ -255,9 +255,9 @@ def execution_metrics_collector(
     sleep_secs: "float" = 1,
     timestamp_format: "str" = "%Y-%m-%d %H:%M:%S",
     match_docker: "bool" = False,
-) -> "None":
+) -> "pathlib.Path":
     pop = subprocess.Popen(cmdline)
-    process_metrics_collector(
+    metrics_path = process_metrics_collector(
         pop.pid,
         reldatadir,
         sleep_secs=sleep_secs,
@@ -267,6 +267,8 @@ def execution_metrics_collector(
     # Just for completeness
     pop.wait()
 
+    return metrics_path
+
 
 def process_metrics_collector(
     pid: "int",
@@ -274,7 +276,7 @@ def process_metrics_collector(
     sleep_secs: "float" = 1,
     timestamp_format: "str" = "%Y-%m-%d %H:%M:%S",
     match_docker: "bool" = False,
-) -> "None":
+) -> "pathlib.Path":
     # If the process does not exist, it will raise a psutil.NoSuchProcess exception
     try:
         p = psutil.Process(pid)
@@ -668,6 +670,8 @@ def process_metrics_collector(
             )
 
         time.sleep(sleep_secs)
+
+    return dir_name
 
 
 def main() -> "None":

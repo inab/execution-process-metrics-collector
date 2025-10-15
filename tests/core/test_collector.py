@@ -21,8 +21,11 @@
 import pytest
 import inspect
 import pathlib
+import shutil
+import subprocess
 
 from execution_process_metrics_collector.collector import execution_metrics_collector
+from execution_process_metrics_collector.tdp_finder import tdp_finder
 
 from typing import (
     TYPE_CHECKING,
@@ -32,6 +35,9 @@ if TYPE_CHECKING:
     from typing import (
         Optional,
         Sequence,
+    )
+    from typing_extensions import (
+        Final,
     )
 
 
@@ -43,18 +49,68 @@ COLLECTOR_TESTBED = pytest.mark.parametrize(
 )
 
 
+@pytest.mark.filterwarnings("ignore:.*:pytest.PytestReturnNotNoneWarning")
 @COLLECTOR_TESTBED
 def test_collector(
     tmpdir: "str",
     command_line: "Sequence[str]",
     should_fail: "Optional[Sequence[str]]",
-) -> "None":
+) -> "pathlib.Path":
     try:
-        execution_metrics_collector(
+        metrics_path = execution_metrics_collector(
             command_line,
             pathlib.Path(tmpdir),
             match_docker=True,
         )
+    except BaseException:
+        current_frame = inspect.currentframe()
+        if (
+            should_fail is None
+            or current_frame is None
+            or current_frame.f_code.co_name not in should_fail
+        ):  # type: ignore[union-attr]
+            raise
+    else:
+        current_frame = inspect.currentframe()
+        if (
+            should_fail is not None
+            and current_frame is not None
+            and current_frame.f_code.co_name in should_fail
+        ):  # type: ignore[union-attr]
+            raise AssertionError(
+                f"Method {current_frame.f_code.co_name} should have failed with command line {command_line}"
+            )  # type: ignore[union-attr]
+
+    return metrics_path
+
+
+CPU_SPEC_DATASET_REPO: "Final[str]" = "https://github.com/JosuaCarl/cpu-spec-dataset"
+
+
+@COLLECTOR_TESTBED
+def test_tdp_finder(
+    tmpdir: "str",
+    command_line: "Sequence[str]",
+    should_fail: "Optional[Sequence[str]]",
+) -> "None":
+    metrics_path = test_collector(tmpdir, command_line, should_fail)
+
+    spec_path = pathlib.Path(tmpdir) / "cpu_spec_dataset"
+    if not spec_path.exists():
+        git_path = shutil.which("git")
+        assert git_path is not None, "git not found"
+        subprocess.run(
+            [git_path, "clone", CPU_SPEC_DATASET_REPO, spec_path.as_posix()], check=True
+        )
+
+    assert spec_path.is_dir()
+
+    processors_file = spec_path / "dataset" / "intel-cpus.csv"
+
+    assert processors_file.exists()
+
+    try:
+        tdp_finder(metrics_path, processors_file)
     except BaseException:
         current_frame = inspect.currentframe()
         if (
