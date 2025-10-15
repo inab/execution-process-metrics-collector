@@ -102,13 +102,16 @@ For instance, the sample directory was obtained just running next command line:
 
 ## Digestion
 
-The program `tdp-finder.py` helps to obtain the TDP of a processor, using the gathered metadata stored at `cpu_details.json` within the series directory.
+The program `tdp-finder.py` helps to obtain the TDP of an Intel processor, using the gathered metadata stored at `cpu_details.json` within the series directory.
 
 Repository https://github.com/felixsteinke/cpu-spec-dataset contains at
 [dataset](https://github.com/felixsteinke/cpu-spec-dataset/tree/main/dataset) subdirectory several tables in CSV format with
-this and other details for many Intel, AMD and Ampere processors.
+this and other details for many Intel, AMD and Ampere processors. The key column here is `ProcessorNumber`.
 
-For instance:
+Forked repository https://github.com/JosuaCarl/cpu-spec-dataset contains at
+[dataset](https://github.com/JosuaCarl/cpu-spec-dataset/tree/main/dataset) subdirectory tables in CSV similar to the ones from original repo, but with different column names. The key column here to match the processor is `Processor Number`.
+
+Usage would be something like next:
 
 ```bash
 git clone https://github.com/felixsteinke/cpu-spec-dataset
@@ -116,11 +119,22 @@ python tdp-finder.py sample-series/Wetlab2Variations_metrics/2025_05_20-02_19-14
 ```
 
 ```
-TDP => 28.0 W
+TDP (ConfigTDPMax) => 28.0 W
+```
+
+or
+
+```bash
+git clone https://github.com/JosuaCarl/cpu-spec-dataset cpu-spec-dataset_Josua
+python tdp-finder.py sample-series/Wetlab2Variations_metrics/2025_05_20-02_19-14001/ cpu-spec-dataset_Josua/dataset/intel-cpus.csv 
+```
+
+```
+TDP (Configurable TDP-up) => 28.0 W
 ```
 
 The program `metrics-aggregator.py` is an initial proof of concept to digest the gathered process tree time series. As it tries
-computing the Wh of each part being executed, it needs the TDP (Thermal Design Power) from the CPU.
+computing the Wh of each part being executed, it needs the TDP (Thermal Design Power) or similar from the CPU.
 
 For instance, getting all the consumptions from main steps of a workflow execution (which was using docker for its steps)
 and it was collected, would be:

@@ -23,6 +23,12 @@ import logging
 import pathlib
 import re
 import sys
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from typing import (
+        Tuple,
+    )
 
 import pandas as pd
 
@@ -33,7 +39,9 @@ from .collector import (
 logger = logging.getLogger(__name__)
 
 
-def tdp_finder(series_dir: "pathlib.Path", processors_file: "pathlib.Path") -> "float":
+def tdp_finder(
+    series_dir: "pathlib.Path", processors_file: "pathlib.Path"
+) -> "Tuple[str, float]":
     if not series_dir.is_dir():
         logger.error(f"Path {series_dir.as_posix()} is not a directory")
         raise Exception()
@@ -48,24 +56,56 @@ def tdp_finder(series_dir: "pathlib.Path", processors_file: "pathlib.Path") -> "
 
     model_name = cpu_details[0]["model name"]
 
-    cpus = pd.read_csv(processors_file)
+    # low_memory is needed to avoid a warning in some CSV files with mixed data
+    cpus = pd.read_csv(processors_file, low_memory=False)
 
-    tdp_str = cpus[
-        cpus["ProcessorNumber"].apply(lambda pn: str(pn) in model_name)
-    ].ConfigTDPMax.values[0]
-    matched = re.search(r"^([0-9]+(?:\.[0-9]+])?) W", tdp_str)
-    if matched is not None:
-        tdp_matched = matched.group(1)
+    for key_column in ("ProcessorNumber", "Processor Number"):
+        if key_column in cpus.columns:
+            break
     else:
-        tdp_matched = tdp_str
+        logger.error(
+            f"Unable to find a valid processor identification column in file {processors_file.as_posix()}"
+        )
+        raise Exception()
 
-    return float(tdp_matched)
+    filtered_cpus = cpus[cpus[key_column].apply(lambda pn: str(pn) in model_name)]
+
+    if len(filtered_cpus) == 0:
+        logger.error(
+            f"Unable to match a valid processor row for {model_name} in file {processors_file.as_posix()}"
+        )
+        raise Exception()
+
+    matches = []
+    for column_name, column in filtered_cpus.items():
+        if not column.hasnans:
+            putative_tdp_str = column.values[0]
+            if isinstance(putative_tdp_str, str):
+                matched = re.search(
+                    r"^(?:[0-9]+(?:\.[0-9]+])?-)?([0-9]+(?:\.[0-9]+])?) W",
+                    putative_tdp_str,
+                )
+                if matched:
+                    matches.append((str(column_name), matched.group(1)))
+
+    if len(matches) == 0:
+        logger.error(
+            f"Unable to find processor package consumption values for {model_name} in file {processors_file.as_posix()}"
+        )
+        raise Exception()
+
+    # Now, sort by consumption
+    matches.sort(key=lambda t: t[1], reverse=True)
+
+    return (matches[0][0], float(matches[0][1]))
 
 
 def main() -> "None":
     if len(sys.argv) >= 3:
-        tdp_in_w = tdp_finder(pathlib.Path(sys.argv[1]), pathlib.Path(sys.argv[2]))
-        print(f"TDP => {tdp_in_w} W")
+        tdp_column, tdp_in_w = tdp_finder(
+            pathlib.Path(sys.argv[1]), pathlib.Path(sys.argv[2])
+        )
+        print(f"TDP ({tdp_column}) => {tdp_in_w} W")
     else:
         print(
             f"Usage: {sys.argv[0]} {{series_dir}} {{intel_datasheets_dir}}",
