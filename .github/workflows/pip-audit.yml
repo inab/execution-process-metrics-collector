@@ -106,7 +106,7 @@ jobs:
                   ;;
               esac
             done
-            for aud in "${{steps.download.outputs.download-path}}"/audit-report*.md ; do
+            for aud in "${{steps.download.outputs.download-path}}"/audit-report-*.md ; do
               case "$aud" in
                 */audit-report-\*.md)
                   break
