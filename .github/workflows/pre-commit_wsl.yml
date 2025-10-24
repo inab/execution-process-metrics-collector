@@ -13,7 +13,8 @@ jobs:
     runs-on: windows-2022
     strategy:
       matrix:
-        python-version: [ "3.9", "3.10", "3.11", "3.12", "3.13" ]
+        python-version: [ "3.12" ]
+#        python-version: [ "3.9", "3.10", "3.11", "3.12", "3.13" ]
     name: Pre-commit WSL python ${{ matrix.python-version }}
     steps:
       - uses: Vampire/setup-wsl@v6
@@ -39,7 +40,7 @@ jobs:
             tk-dev
             libffi-dev
             liblzma-dev
-            python-openssl
+            python3-openssl
       - name: Install pyenv in WSL
         shell: wsl-bash {0}
         run: |
