@@ -125,6 +125,11 @@ jobs:
           source .env/bin/activate
           
           pytest --cov=execution_process_metrics_collector
+      - uses: actions/upload-artifact@v4
+        with:
+          name: wsl_pre-commit-${{ matrix.python-version }}
+          retention-days: 2
+          path: the_repo/constraints-${{ matrix.python-version }}-wsl.txt
 
   check_licences:
     runs-on: ubuntu-latest
@@ -160,11 +165,6 @@ jobs:
       - name: Print licences report
         if: ${{ always() }}
         run: echo "${{ steps.license_check_print_report.outputs.report }}"
-      - uses: actions/upload-artifact@v4
-        with:
-          name: wsl_pre-commit-${{ matrix.python-version }}
-          retention-days: 2
-          path: the_repo/constraints-${{ matrix.python-version }}-wsl.txt
 
   pull_request_changes:
     # Do this only when it is not a pull request validation
