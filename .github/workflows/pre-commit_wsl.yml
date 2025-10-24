@@ -125,6 +125,24 @@ jobs:
           source .env/bin/activate
           
           pytest --cov=execution_process_metrics_collector
+
+  check_licences:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: [ "3.12" ]
+#        python-version: [ "3.9", "3.10", "3.11", "3.12", "3.13" ]
+    name: Validate licences of gathered dependencies (WSL python ${{ matrix.python-version }})
+    needs:
+      - pre-commit
+    steps:
+      - name: Get analysis timestamp
+        id: timestamp
+        run: echo "timestamp=$(date -Is)" >> "$GITHUB_OUTPUT"
+      - uses: actions/download-artifact@v5
+        id: download
+        with:
+          name: wsl-pre-commit-${{matrix.python-version}}
       - name: Get transitive dependencies licences
         id: license_check_print_report
 #        uses: pilosus/action-pip-license-checker@v1.0.0
@@ -154,7 +172,7 @@ jobs:
     runs-on: ubuntu-latest
     name: Pull request with the newly generated contents
     needs:
-      - pre-commit
+      - check_licences
     steps:
       - name: Get analysis timestamp
         id: timestamp
