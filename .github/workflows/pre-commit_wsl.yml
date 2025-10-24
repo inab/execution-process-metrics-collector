@@ -13,8 +13,8 @@ jobs:
     runs-on: windows-2022
     strategy:
       matrix:
-        python-version: [ "3.12" ]
-#        python-version: [ "3.9", "3.10", "3.11", "3.12", "3.13" ]
+#        python-version: [ "3.12" ]
+        python-version: [ "3.9", "3.10", "3.11", "3.12", "3.13" ]
     name: Pre-commit WSL python ${{ matrix.python-version }}
     steps:
       - uses: Vampire/setup-wsl@v6
@@ -135,8 +135,8 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: [ "3.12" ]
-#        python-version: [ "3.9", "3.10", "3.11", "3.12", "3.13" ]
+#        python-version: [ "3.12" ]
+        python-version: [ "3.9", "3.10", "3.11", "3.12", "3.13" ]
     name: Validate licences of gathered dependencies (WSL python ${{ matrix.python-version }})
     needs:
       - pre-commit
@@ -208,7 +208,7 @@ jobs:
         if: steps.move.outputs.skip == 'false'
         with:
           title: Updated WSL constraints (triggered on ${{ steps.timestamp.outputs.timestamp }} by ${{ github.sha }})
-          branch: create-pull-request/patch-constraints
+          branch: create-pull-request/patch-wsl_constraints
           add-paths: constraints-*-wsl.txt
           delete-branch: true
           commit-message: "[create-pull-request] Automatically commit updated contents (constraints WSL)"
