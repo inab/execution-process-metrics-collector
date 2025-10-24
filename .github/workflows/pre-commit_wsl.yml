@@ -147,7 +147,7 @@ jobs:
       - uses: actions/download-artifact@v5
         id: download
         with:
-          name: wsl-pre-commit-${{matrix.python-version}}
+          name: wsl_pre-commit-${{matrix.python-version}}
       - name: Get transitive dependencies licences
         id: license_check_print_report
 #        uses: pilosus/action-pip-license-checker@v1.0.0
@@ -181,7 +181,7 @@ jobs:
       - uses: actions/download-artifact@v5
         id: download
         with:
-          pattern: wsl-pre-commit-*
+          pattern: wsl_pre-commit-*
           merge-multiple: true
           path: changes-dir
       - name: Move artifacts to their right place
