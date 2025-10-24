@@ -1,0 +1,193 @@
+name: pre-commit
+
+on:
+  workflow_dispatch:
+  pull_request:
+  push:
+    branches: [exec]
+    paths-ignore:
+      - 'constraints-*.txt'
+
+jobs:
+  pre-commit:
+    runs-on: windows-2022
+    strategy:
+      matrix:
+        python-version: [ "3.9", "3.10", "3.11", "3.12", "3.13" ]
+    name: Pre-commit WSL python ${{ matrix.python-version }}
+    steps:
+      - uses: Vampire/setup-wsl@v6
+        with:
+          distribution: Ubuntu-24.04
+          use-cache: 'true'
+          update: 'true'
+          additional-packages: |
+            python3
+            python3-pip
+            build-essential
+            libssl-dev
+            zlib1g-dev
+            libbz2-dev
+            libreadline-dev
+            libsqlite3-dev
+            wget
+            curl
+            llvm
+            libncurses5-dev
+            libncursesw5-dev
+            xz-utils
+            tk-dev
+            libffi-dev
+            liblzma-dev
+            python-openssl
+      - name: Install pyenv in WSL
+        shell: wsl-bash {0}
+        run: |
+          git clone -b v2.6.11 https://github.com/pyenv/pyenv.git ~/.pyenv
+          cd ~/.pyenv && src/configure && make -C src
+          
+          echo 'export PYENV_ROOT="$HOME/.pyenv"' >> ~/.bashrc
+          echo '[[ -d $PYENV_ROOT/bin ]] && export PATH="$PYENV_ROOT/bin:$PATH"' >> ~/.bashrc
+          echo 'eval "$(pyenv init - bash)"' >> ~/.bashrc
+          
+          echo 'export PYENV_ROOT="$HOME/.pyenv"' >> ~/.bash_profile
+          echo '[[ -d $PYENV_ROOT/bin ]] && export PATH="$PYENV_ROOT/bin:$PATH"' >> ~/.bash_profile
+          echo 'eval "$(pyenv init - bash)"' >> ~/.bash_profile
+      - name: Install python ${{matrix.python-version}} using pyenv in WSL
+        shell: wsl-bash {0}
+        run: |
+          pyenv install ${{matrix.python-version}}
+          pyenv global ${{matrix.python-version}}
+      - name: Clone repo
+        shell: wsl-bash {0}
+        run: |
+          git clone --filter=blob:none --no-checkout "${{github.server_url}}/${{github.repository}}" the_repo
+          cd the_repo
+          git checkout "${{github.sha}}"
+      - name: 'Install requirements (standard or constraints ${{ matrix.python-version }})'
+        shell: wsl-bash {0}
+        run: |
+          cd the_repo
+          python -mvenv .env
+          source .env/bin/activate
+          
+          pip install --upgrade pip wheel
+          constraints_file="constraints-${{ matrix.python-version }}-wsl.txt"
+          regen_constraints=
+          if [ -f "$constraints_file" ] ; then
+            at="$(git --no-pager log -p -1 "--format=tformat:%at" --no-patch -- "$constraints_file")"
+            dat="$(git --no-pager log -p -1 "--format=tformat:%at" --no-patch -- "requirements.txt")"
+            if [ "$at" -lt "$dat" ] ; then
+              regen_constraints=true
+            fi
+          else
+            regen_constraints=true
+          fi
+          if [ -n "$regen_constraints" ] ; then
+            pip install -r requirements.txt
+            pip freeze > "$constraints_file"
+            grep -vF git+ "$constraints_file" > "$constraints_file"-relaxed
+          else
+            grep -vF git+ "$constraints_file" > "$constraints_file"-relaxed
+            pip install -r requirements.txt -c "$constraints_file"-relaxed
+          fi
+      - name: 'Install development requirements'
+        shell: wsl-bash {0}
+        run: |
+          cd the_repo
+          source .env/bin/activate
+          
+          pip install -r dev-requirements.txt -r mypy-requirements.txt -c constraints-${{ matrix.python-version }}-wsl.txt-relaxed
+#      - name: MyPy cache
+#        uses: actions/cache@v4
+#        with:
+#          path: '.mypy_cache/[0-9]*'
+#          key: mypy-${{ matrix.python-version }}
+      - name: 'pre-commit'
+        shell: wsl-bash {0}
+        run: |
+          cd the_repo
+          source .env/bin/activate
+          
+          pre-commit run -a
+      - name: 'pytest + coverage (${{ matrix.python-version }})'
+        shell: wsl-bash {0}
+        run: |
+          cd the_repo
+          source .env/bin/activate
+          
+          pytest --cov=execution_process_metrics_collector
+      - name: Get transitive dependencies licences
+        id: license_check_print_report
+#        uses: pilosus/action-pip-license-checker@v1.0.0
+#        continue-on-error: true
+        uses: pilosus/action-pip-license-checker@v3.1.0
+        with:
+          requirements: the_repo/constraints-${{ matrix.python-version }}-wsl.txt
+#      - name: Check transitive dependencies licences
+#        id: license_check_report
+#        uses: pilosus/action-pip-license-checker@v3.1.0
+#        with:
+#          requirements: constraints-${{ matrix.python-version }}.txt
+#          fail: 'StrongCopyleft'
+#          exclude: '(?i)^(pylint|dulwich|docutils).*'
+      - name: Print licences report
+        if: ${{ always() }}
+        run: echo "${{ steps.license_check_print_report.outputs.report }}"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: wsl_pre-commit-${{ matrix.python-version }}
+          retention-days: 2
+          path: the_repo/constraints-${{ matrix.python-version }}-wsl.txt
+
+  pull_request_changes:
+    # Do this only when it is not a pull request validation
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    name: Pull request with the newly generated contents
+    needs:
+      - pre-commit
+    steps:
+      - name: Get analysis timestamp
+        id: timestamp
+        run: echo "timestamp=$(date -Is)" >> "$GITHUB_OUTPUT"
+      - uses: actions/checkout@v5
+      - uses: actions/download-artifact@v5
+        id: download
+        with:
+          pattern: wsl-pre-commit-*
+          merge-multiple: true
+          path: changes-dir
+      - name: Move artifacts to their right place
+        id: move
+        run: |
+          skip=true
+          if [ -d "${{steps.download.outputs.download-path}}" ] ; then
+            for con in "${{steps.download.outputs.download-path}}"/constraints-*-wsl.txt ; do
+              case "$con" in
+                */constraints-\*-wsl.txt)
+                  break
+                  ;;
+                *)
+                  cp -p "$con" .
+                  skip=false
+                  ;;
+              esac
+            done
+          fi
+          echo "skip=$skip" >> "$GITHUB_OUTPUT"
+      - name: Create Pull Request
+        id: cpr
+        uses: peter-evans/create-pull-request@v7
+        if: steps.move.outputs.skip == 'false'
+        with:
+          title: Updated WSL constraints (triggered on ${{ steps.timestamp.outputs.timestamp }} by ${{ github.sha }})
+          branch: create-pull-request/patch-constraints
+          add-paths: constraints-*-wsl.txt
+          delete-branch: true
+          commit-message: "[create-pull-request] Automatically commit updated contents (constraints WSL)"
+      - name: Check outputs
+        if: ${{ steps.cpr.outputs.pull-request-number }}
+        run: |
+          echo "Pull Request Number - ${{ steps.cpr.outputs.pull-request-number }}" >> "$GITHUB_STEP_SUMMARY"
+          echo "Pull Request URL - ${{ steps.cpr.outputs.pull-request-url }}" >> "$GITHUB_STEP_SUMMARY"
