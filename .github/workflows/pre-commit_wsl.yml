@@ -44,6 +44,8 @@ jobs:
       - name: Install pyenv in WSL
         shell: wsl-bash {0}
         run: |
+          pwd
+          ls -la
           git clone -b v2.6.11 https://github.com/pyenv/pyenv.git ~/.pyenv
           cd ~/.pyenv && src/configure && make -C src
           
@@ -57,7 +59,7 @@ jobs:
       - name: Install python ${{matrix.python-version}} using pyenv in WSL
         shell: wsl-bash {0}
         run: |
-          source ~/.bashrc
+          source ~/.bash_profile
           pyenv install ${{matrix.python-version}}
           pyenv global ${{matrix.python-version}}
       - name: Clone repo
@@ -69,7 +71,7 @@ jobs:
       - name: 'Install requirements (standard or constraints ${{ matrix.python-version }})'
         shell: wsl-bash {0}
         run: |
-          source ~/.bashrc
+          source ~/.bash_profile
           cd the_repo
           python -mvenv .env
           source .env/bin/activate
@@ -97,7 +99,7 @@ jobs:
       - name: 'Install development requirements'
         shell: wsl-bash {0}
         run: |
-          source ~/.bashrc
+          source ~/.bash_profile
           cd the_repo
           source .env/bin/activate
           
@@ -110,7 +112,7 @@ jobs:
       - name: 'pre-commit'
         shell: wsl-bash {0}
         run: |
-          source ~/.bashrc
+          source ~/.bash_profile
           cd the_repo
           source .env/bin/activate
           
@@ -118,7 +120,7 @@ jobs:
       - name: 'pytest + coverage (${{ matrix.python-version }})'
         shell: wsl-bash {0}
         run: |
-          source ~/.bashrc
+          source ~/.bash_profile
           cd the_repo
           source .env/bin/activate
           
