@@ -70,6 +70,7 @@ jobs:
           echo '[[ -d $PYENV_ROOT/bin ]] && export PATH="$PYENV_ROOT/bin:$PATH"' >> ~/.bash_profile
           echo 'eval "$(pyenv init - bash)"' >> ~/.bash_profile
       - name: Install python ${{matrix.python-version}} using pyenv in WSL
+        if: steps.cache-pyenv.outputs.cache-hit != 'true'
         shell: wsl-bash {0}
         run: |
           source ~/.bash_profile
