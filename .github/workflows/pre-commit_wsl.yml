@@ -44,14 +44,15 @@ jobs:
             libffi-dev
             liblzma-dev
             python3-openssl
-      - name: Cache pyenv in WSL
+      - name: Cache pyenv and pip in WSL
         id: cache-pyenv
         uses: actions/cache@v4
         with:
           path: |
-            .pyenv
-            .bash_profile
-            .bashrc
+            ~/.pyenv
+            ~/.bash_profile
+            ~/.bashrc
+            ~/.cache/pip
           key: ${{ runner.os }}-${{ matrix.python-version }}-${{ matrix.distribution }}
       - name: Install pyenv in WSL
         if: steps.cache-pyenv.outputs.cache-hit != 'true'
