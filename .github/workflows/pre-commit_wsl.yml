@@ -1,4 +1,4 @@
-name: pre-commit
+name: pre-commit_wsl
 
 on:
   workflow_dispatch:
