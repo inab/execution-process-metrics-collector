@@ -19,9 +19,7 @@
 # along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 import datetime
-import json
 import logging
-import os.path
 import pathlib
 import sys
 
@@ -46,46 +44,14 @@ import matplotlib.pyplot as plt
 from adjustText import adjust_text  # type: ignore[import-untyped]
 
 
-from .collector import (
-    REFERENCE_PID_FILENAME,
-    SAMPLING_PERIOD_FILENAME,
-    PIDS_FILENAME,
-    CPU_DETAILS_FILENAME,
-    COMMAND_JSON_FILENAME_TEMPLATE,
-    METRICS_CSV_FILENAME_TEMPLATE,
+from .parser import (
+    metrics_parser,
 )
 
 logger = logging.getLogger(__name__)
 
 GROUPED_BY_COLOR = "#ff6e00"
 OTHER_COLOR = "#f5e050"
-
-
-def process_command(command: "Sequence[str]") -> "str":
-    basename_command = os.path.basename(command[0])
-    retlabel = basename_command
-    if basename_command == "python":
-        for i_token, token in enumerate(command[1:], 1):
-            if not token.startswith("-"):
-                retlabel += "\n" + os.path.basename(token)
-                if retlabel == "cwltool":
-                    retlabel += " " + command[i_token + 1]
-                break
-    elif basename_command == "java":
-        for token in command[1:]:
-            if not token.startswith("-"):
-                retlabel += "\n" + os.path.basename(token)
-                break
-    elif basename_command == "docker":
-        for token in command[1:]:
-            if token == "stats":
-                retlabel = "docker stats"
-                break
-            elif not token.startswith("-") and token != "run":
-                retlabel = "docker run\n" + token
-                break
-
-    return retlabel
 
 
 def draw_tree(
@@ -501,106 +467,12 @@ def metrics_aggregator(
     tdp_in_w: "float",
     group_by_process_name: "Optional[str]" = None,
 ) -> "None":
-    if not series_dir.is_dir():
-        logger.error(f"Path {series_dir.as_posix()} is not a directory")
-        raise Exception()
-
-    reference_pid_filename = series_dir / REFERENCE_PID_FILENAME
-    if not reference_pid_filename.is_file():
-        logger.error(f"Path {reference_pid_filename.as_posix()} is not a filename")
-        raise Exception()
-
-    with reference_pid_filename.open(mode="r", encoding="utf-8") as rF:
-        reference_pid = float(rF.readline())
-
-    sampling_period_filename = series_dir / SAMPLING_PERIOD_FILENAME
-    if not sampling_period_filename.is_file():
-        logger.error(f"Path {sampling_period_filename.as_posix()} is not a filename")
-        raise Exception()
-
-    with sampling_period_filename.open(mode="r", encoding="utf-8") as sF:
-        sampling_period_seconds = float(sF.readline())
-        sampling_period_milliseconds = int(round(sampling_period_seconds * 1000.0))
-        sampling_period_td = pd.Timedelta(sampling_period_milliseconds, "ms")
-
-    cpu_details_filename = series_dir / CPU_DETAILS_FILENAME
-    if not cpu_details_filename.is_file():
-        logger.error(f"Path {cpu_details_filename.as_posix()} is not a filename")
-        raise Exception()
-
-    with cpu_details_filename.open(mode="r", encoding="utf-8") as cF:
-        cpu_details = json.load(cF)
-
-    # TODO, compute this per CPU
-    num_cpu_cores = int(cpu_details[0]["cpu cores"])
-    num_cpu_processors = len(cpu_details[0]["processors"])
-    factor_cores_processors = float(num_cpu_cores) / float(num_cpu_processors)  # noqa: F841
-
-    logger.info(
-        f"Processing directory {series_dir.as_posix()} about pid {reference_pid}"
+    pids, num_cpu_cores, sampling_period_seconds = metrics_parser(
+        series_dir, outputs_dir, group_by_process_name=group_by_process_name
     )
 
-    pids_filename = series_dir / PIDS_FILENAME
-    if not pids_filename.is_file():
-        logger.error(f"Path {pids_filename.as_posix()} is not a filename")
-        raise Exception()
-
-    # Reading all the pids
-    pids = pd.read_table(
-        pids_filename,
-        na_values=["-"],
-        dtype={"PID": "Int32", "PPID": "Int32"},
-        parse_dates=["Time"],
-    )
-    # Generating the needed columns to generate a tree structure
-    pids["node"] = pids.apply(
-        lambda row: str(row.create_time) + "_" + str(row.PID), axis=1
-    )
-    pids["parent"] = pids.apply(
-        lambda row: str(row.ppid_create_time) + "_" + str(row.PPID)
-        if not pd.isna(row.PPID)
-        else None,
-        axis=1,
-    )
-
-    # Now, let's read the command lines
-    main_commands = []
-    command_labels = []
-    full_command = []
-    full_stats = []
-    subtree_root = []
-    for index, row in pids.iterrows():
-        command_json_filename = series_dir / COMMAND_JSON_FILENAME_TEMPLATE.format(
-            row.PID, row.create_time
-        )
-        with command_json_filename.open(mode="r", encoding="utf-8") as cH:
-            command_json = json.load(cH)
-            assert isinstance(command_json, list)
-            full_command.append(command_json)
-            command = process_command(command_json)
-            main_commands.append(command)
-            command_labels.append(command + "\n" + str(index))
-            subtree_root.append(
-                command.startswith(group_by_process_name)
-                if group_by_process_name is not None
-                else row.PID == reference_pid
-            )
-
-        metrics_csv_filename = series_dir / METRICS_CSV_FILENAME_TEMPLATE.format(
-            row.PID, row.create_time
-        )
-        metrics = pd.read_csv(metrics_csv_filename, parse_dates=["Time"])
-
-        # Focus on groups based on the core where it was working
-        # grouped = metrics.groupby(["core_num"])
-        # print(metrics.head())
-        full_stats.append(metrics)
-
-    pids["command"] = main_commands
-    pids["command_label"] = command_labels
-    pids["full_command"] = full_command
-    pids["full_stats"] = full_stats
-    pids["subtree_root"] = subtree_root
+    sampling_period_milliseconds = int(round(sampling_period_seconds * 1000.0))
+    sampling_period_td = pd.Timedelta(sampling_period_milliseconds, "ms")
 
     # Compute the graph
     pids_tree = nx.from_pandas_edgelist(
