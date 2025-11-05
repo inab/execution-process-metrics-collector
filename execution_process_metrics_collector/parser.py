@@ -181,3 +181,24 @@ def metrics_parser(
     pids["subtree_root"] = subtree_root
 
     return pids, num_cpu_cores, sampling_period_seconds
+
+
+def timedelta_full_formatter(td: "pd.Timedelta") -> "str":
+    return str(td)
+
+
+def timedelta_noday_formatter(td: "pd.Timedelta") -> "str":
+    if td.components.days > 0:
+        return timedelta_full_formatter(td)
+
+    if td.components.milliseconds > 0:
+        return "{0:02d}:{1:02d}:{2:02d}.{3:03d}".format(
+            td.components.hours,
+            td.components.minutes,
+            td.components.seconds,
+            td.components.milliseconds,
+        )
+    else:
+        return "{0:02d}:{1:02d}:{2:02d}".format(
+            td.components.hours, td.components.minutes, td.components.seconds
+        )

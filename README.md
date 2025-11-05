@@ -85,6 +85,12 @@ You have a sample directory obtained from measuring a workflow execution using W
 The command line is something like:
 
 ```bash
+python execution-metrics-collector.py {base_metrics_directory} {command line} {and} {parameters}
+```
+
+The equivalent old wrapper version would be:
+
+```bash
 ./execution-metrics-collector.sh {base_metrics_directory} {command line} {and} {parameters}
 ```
 
@@ -98,6 +104,15 @@ For instance, the sample directory was obtained just running next command line:
 
 ```bash
 ~/projects/execution-process-metrics-collector/execution-metrics-collector.sh ~/projects/execution-process-metrics-collector/Wetlab2Variations_metrics python WfExS-backend.py -L workflow_examples/local_config.yaml staged-workdir offline-exec 01a1db90-1508-4bad-beb7-7f7989838542
+```
+
+## Time series charts
+The program `plotGraph.py` is a replacement for the original `plotGraph.sh`. It generates
+several line charts for each monitored process, comparing the time series of
+interesting metrics.
+
+```bash
+python plotGraph.py sample-series/Wetlab2Variations_metrics/2025_05_20-02_19-14001/ dest_directory
 ```
 
 ## Digestion

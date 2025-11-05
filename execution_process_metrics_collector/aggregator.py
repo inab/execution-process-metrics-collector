@@ -46,6 +46,7 @@ from adjustText import adjust_text  # type: ignore[import-untyped]
 
 from .parser import (
     metrics_parser,
+    timedelta_noday_formatter,
 )
 
 logger = logging.getLogger(__name__)
@@ -128,6 +129,8 @@ def draw_tree(
         matplotlib.use("agg")
         fig.savefig(outputs_dir / "graph.png")
 
+    plt.close(fig)
+
 
 def draw_spiral(
     pids: "pd.DataFrame",
@@ -195,26 +198,7 @@ def draw_spiral(
         matplotlib.use("agg")
         fig.savefig(outputs_dir / "spiral-graph.png")
 
-
-def timedelta_full_formatter(td: "pd.Timedelta") -> "str":
-    return str(td)
-
-
-def timedelta_noday_formatter(td: "pd.Timedelta") -> "str":
-    if td.components.days > 0:
-        return timedelta_full_formatter(td)
-
-    if td.components.milliseconds > 0:
-        return "{0:02d}:{1:02d}:{2:02d}.{3:03d}".format(
-            td.components.hours,
-            td.components.minutes,
-            td.components.seconds,
-            td.components.milliseconds,
-        )
-    else:
-        return "{0:02d}:{1:02d}:{2:02d}".format(
-            td.components.hours, td.components.minutes, td.components.seconds
-        )
+    plt.close(fig)
 
 
 def draw_consumptions_chart(
@@ -321,6 +305,8 @@ Generated on {datetime.datetime.now().astimezone().isoformat()}\
 
         matplotlib.use("agg")
         fig.savefig(outputs_dir / "consumptions.png")
+
+    plt.close(fig)
 
 
 def draw_lollipop_chart(
@@ -459,6 +445,8 @@ def draw_lollipop_chart(
 
         matplotlib.use("agg")
         fig.savefig(outputs_dir / "timeline.png")
+
+    plt.close(fig)
 
 
 def metrics_aggregator(

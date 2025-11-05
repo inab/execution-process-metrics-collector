@@ -72,6 +72,7 @@ setuptools.setup(
         "execution-metrics-collector.py",
         "process-metrics-collector.py",
         "metrics-aggregator.py",
+        "plotGraph.py",
         "tdp-finder.py",
         "execution-metrics-collector.sh",
         "plotGraph.sh",
