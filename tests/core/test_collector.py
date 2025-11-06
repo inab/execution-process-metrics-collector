@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 # SPDX-License-Identifier: GPL-3.0-or-later
-# execution-process-metrics-collector, a process tree metrics gatherer.
+# treecript, a process tree metrics gatherer.
 # Copyright (C) 2025 Barcelona Supercomputing Center, José M. Fernández
 #
 # This program is free software: you can redistribute it and/or modify
@@ -24,8 +24,8 @@ import pathlib
 import shutil
 import subprocess
 
-from execution_process_metrics_collector.collector import execution_metrics_collector
-from execution_process_metrics_collector.tdp_finder import tdp_finder
+from treecript.collector import execution_metrics_collector
+from treecript.tdp_finder import tdp_finder
 
 from typing import (
     TYPE_CHECKING,

@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 # SPDX-License-Identifier: GPL-3.0-or-later
-# execution-process-metrics-collector, a process tree metrics gatherer.
+# treecript, a process tree metrics gatherer.
 # Copyright (C) 2025 Barcelona Supercomputing Center, José M. Fernández
 #
 # This program is free software: you can redistribute it and/or modify
@@ -23,4 +23,4 @@ __copyright__ = "© 2025 Barcelona Supercomputing Center (BSC), ES"
 __license__ = "GPL-3.0-or-later"
 
 # https://www.python.org/dev/peps/pep-0396/
-__version__ = "0.6.0"
+__version__ = "0.6.1"

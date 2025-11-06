@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 # SPDX-License-Identifier: GPL-3.0-or-later
-# execution-process-metrics-collector, a process tree metrics gatherer.
+# treecript, a process tree metrics gatherer.
 # Copyright (C) 2025 Barcelona Supercomputing Center, José M. Fernández
 #
 # This program is free software: you can redistribute it and/or modify

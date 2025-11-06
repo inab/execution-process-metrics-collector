@@ -139,7 +139,7 @@ jobs:
           cd the_repo
           source .env/bin/activate
           
-          pytest --cov=execution_process_metrics_collector
+          pytest --cov=treecript
       - uses: actions/upload-artifact@v4
         with:
           name: wsl_pre-commit-${{ matrix.python-version }}-${{ matrix.distribution }}

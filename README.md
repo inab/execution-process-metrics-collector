@@ -103,7 +103,7 @@ python process-metrics-collector.py {pid} {base_metrics_directory} {sample_perio
 For instance, the sample directory was obtained just running next command line:
 
 ```bash
-~/projects/execution-process-metrics-collector/execution-metrics-collector.sh ~/projects/execution-process-metrics-collector/Wetlab2Variations_metrics python WfExS-backend.py -L workflow_examples/local_config.yaml staged-workdir offline-exec 01a1db90-1508-4bad-beb7-7f7989838542
+~/projects/treecript/execution-metrics-collector.sh ~/projects/treecript/Wetlab2Variations_metrics python WfExS-backend.py -L workflow_examples/local_config.yaml staged-workdir offline-exec 01a1db90-1508-4bad-beb7-7f7989838542
 ```
 
 ## Time series charts

@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 # SPDX-License-Identifier: GPL-3.0-or-later
-# execution-process-metrics-collector, a process tree metrics gatherer.
+# treecript, a process tree metrics gatherer.
 # Copyright (C) 2025 Barcelona Supercomputing Center, José M. Fernández
 #
 # This program is free software: you can redistribute it and/or modify
@@ -29,9 +29,9 @@ import setuptools
 setupDir = os.path.dirname(__file__)
 sys.path.insert(0, setupDir)
 
-from execution_process_metrics_collector import __version__ as epmc_version  # noqa: E402
-from execution_process_metrics_collector import __author__ as epmc_author  # noqa: E402
-from execution_process_metrics_collector import __license__ as epmc_license  # noqa: E402
+from treecript import __version__ as epmc_version  # noqa: E402
+from treecript import __author__ as epmc_author  # noqa: E402
+from treecript import __license__ as epmc_license  # noqa: E402
 
 # Populating the long description
 readme_path = os.path.join(setupDir, "README.md")
@@ -50,7 +50,7 @@ if os.path.exists(requirements_path):
             requirements.append(line if m is None else m.group(1))
 
 setuptools.setup(
-    name="execution-process-metrics-collector",
+    name="treecript",
     version=epmc_version,
     author=epmc_author,
     author_email="jose.m.fernandez@bsc.es",
@@ -58,13 +58,11 @@ setuptools.setup(
     description="Process tree metrics gatherer and digester",
     long_description=long_description,
     long_description_content_type="text/markdown",
-    url="https://github.com/inab/execution-process-metrics-collector",
-    project_urls={
-        "Bug Tracker": "https://github.com/inab/execution-process-metrics-collector/issues"
-    },
+    url="https://github.com/inab/treecript",
+    project_urls={"Bug Tracker": "https://github.com/inab/treecript/issues"},
     packages=setuptools.find_packages(),
     package_data={
-        "execution_process_metrics_collector": [
+        "treecript": [
             "py.typed",
         ]
     },

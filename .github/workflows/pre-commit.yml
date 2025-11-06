@@ -70,7 +70,7 @@ jobs:
  #         extra_args: --all -c .pre-commit-config-gh-${{ matrix.python-version }}.yaml
       - name: 'pytest + coverage (${{ matrix.python-version }})'
         run: |
-          pytest --cov=execution_process_metrics_collector
+          pytest --cov=treecript
       - name: Get transitive dependencies licences
         id: license_check_print_report
 #        uses: pilosus/action-pip-license-checker@v1.0.0
