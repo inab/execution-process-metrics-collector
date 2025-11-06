@@ -1,0 +1,1 @@
+["wget", "-nv", "-P", "/tmp/treecript_demo.WGXiGyaIef", "https://www.kernel.org/pub/linux/kernel/v6.x/linux-6.6.114.tar.gz"]

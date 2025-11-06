@@ -1,0 +1,202 @@
+[
+    {
+        "processor_id": "0",
+        "cpu_id": "0",
+        "core_id": "0"
+    },
+    {
+        "processor_id": "1",
+        "cpu_id": "0",
+        "core_id": "1"
+    },
+    {
+        "processor_id": "2",
+        "cpu_id": "0",
+        "core_id": "2"
+    },
+    {
+        "processor_id": "3",
+        "cpu_id": "0",
+        "core_id": "3"
+    },
+    {
+        "processor_id": "4",
+        "cpu_id": "0",
+        "core_id": "4"
+    },
+    {
+        "processor_id": "5",
+        "cpu_id": "0",
+        "core_id": "8"
+    },
+    {
+        "processor_id": "6",
+        "cpu_id": "0",
+        "core_id": "9"
+    },
+    {
+        "processor_id": "7",
+        "cpu_id": "0",
+        "core_id": "10"
+    },
+    {
+        "processor_id": "8",
+        "cpu_id": "0",
+        "core_id": "11"
+    },
+    {
+        "processor_id": "9",
+        "cpu_id": "0",
+        "core_id": "12"
+    },
+    {
+        "processor_id": "10",
+        "cpu_id": "1",
+        "core_id": "0"
+    },
+    {
+        "processor_id": "11",
+        "cpu_id": "1",
+        "core_id": "1"
+    },
+    {
+        "processor_id": "12",
+        "cpu_id": "1",
+        "core_id": "2"
+    },
+    {
+        "processor_id": "13",
+        "cpu_id": "1",
+        "core_id": "3"
+    },
+    {
+        "processor_id": "14",
+        "cpu_id": "1",
+        "core_id": "4"
+    },
+    {
+        "processor_id": "15",
+        "cpu_id": "1",
+        "core_id": "8"
+    },
+    {
+        "processor_id": "16",
+        "cpu_id": "1",
+        "core_id": "9"
+    },
+    {
+        "processor_id": "17",
+        "cpu_id": "1",
+        "core_id": "10"
+    },
+    {
+        "processor_id": "18",
+        "cpu_id": "1",
+        "core_id": "11"
+    },
+    {
+        "processor_id": "19",
+        "cpu_id": "1",
+        "core_id": "12"
+    },
+    {
+        "processor_id": "20",
+        "cpu_id": "0",
+        "core_id": "0"
+    },
+    {
+        "processor_id": "21",
+        "cpu_id": "0",
+        "core_id": "1"
+    },
+    {
+        "processor_id": "22",
+        "cpu_id": "0",
+        "core_id": "2"
+    },
+    {
+        "processor_id": "23",
+        "cpu_id": "0",
+        "core_id": "3"
+    },
+    {
+        "processor_id": "24",
+        "cpu_id": "0",
+        "core_id": "4"
+    },
+    {
+        "processor_id": "25",
+        "cpu_id": "0",
+        "core_id": "8"
+    },
+    {
+        "processor_id": "26",
+        "cpu_id": "0",
+        "core_id": "9"
+    },
+    {
+        "processor_id": "27",
+        "cpu_id": "0",
+        "core_id": "10"
+    },
+    {
+        "processor_id": "28",
+        "cpu_id": "0",
+        "core_id": "11"
+    },
+    {
+        "processor_id": "29",
+        "cpu_id": "0",
+        "core_id": "12"
+    },
+    {
+        "processor_id": "30",
+        "cpu_id": "1",
+        "core_id": "0"
+    },
+    {
+        "processor_id": "31",
+        "cpu_id": "1",
+        "core_id": "1"
+    },
+    {
+        "processor_id": "32",
+        "cpu_id": "1",
+        "core_id": "2"
+    },
+    {
+        "processor_id": "33",
+        "cpu_id": "1",
+        "core_id": "3"
+    },
+    {
+        "processor_id": "34",
+        "cpu_id": "1",
+        "core_id": "4"
+    },
+    {
+        "processor_id": "35",
+        "cpu_id": "1",
+        "core_id": "8"
+    },
+    {
+        "processor_id": "36",
+        "cpu_id": "1",
+        "core_id": "9"
+    },
+    {
+        "processor_id": "37",
+        "cpu_id": "1",
+        "core_id": "10"
+    },
+    {
+        "processor_id": "38",
+        "cpu_id": "1",
+        "core_id": "11"
+    },
+    {
+        "processor_id": "39",
+        "cpu_id": "1",
+        "core_id": "12"
+    }
+]
