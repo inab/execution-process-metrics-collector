@@ -159,6 +159,8 @@ def analyse_list_of_processes(
                         attrs=[
                             "name",
                             "cpu_times",
+                            "memory_full_info",
+                            "io_counters",
                             "net_connections",
                             "pid",
                             "cpu_percent",
@@ -168,10 +170,7 @@ def analyse_list_of_processes(
                             "cmdline",
                             "create_time",
                             "status",
-                            "io_counters",
                             "ppid",
-                            "memory_info",
-                            "memory_full_info",
                         ],
                     )
 
@@ -260,6 +259,7 @@ def execution_metrics_collector(
     timestamp_format: "str" = "%Y-%m-%d %H:%M:%S",
     match_docker: "bool" = False,
 ) -> "pathlib.Path":
+    # See https://stackoverflow.com/a/4791612
     pop = subprocess.Popen(cmdline, preexec_fn=os.setsid)
     # Just to be sure every descendant disappears
     atexit.register(
@@ -540,6 +540,14 @@ def process_metrics_collector(
                 child_pid_str, create_time
             )
 
+            c_cpu = child_d["cpu_times"]
+            c_mem = c_full_mem = child_d["memory_full_info"]
+            c_io = child_d["io_counters"]
+            c_conn = child_d["net_connections"]
+            # The process suddenly disappeared
+            if c_cpu is None or c_full_mem is None:
+                continue
+
             if mode_w == "w":
                 logger.info(f"Writing data to CSV file {csv_filename.as_posix()}...")
 
@@ -592,7 +600,6 @@ def process_metrics_collector(
                     print(",".join(metrics_cols), file=cH)
 
                 # Counting TCP connections
-                c_conn = child_d["net_connections"]
                 tcp_connections = 0
                 if c_conn is not None:
                     for c_c in c_conn:
@@ -602,14 +609,10 @@ def process_metrics_collector(
                         ):
                             tcp_connections += 1
 
-                c_cpu = child_d["cpu_times"]
-                c_mem = child_d["memory_info"]
                 c_mem_vms = c_mem.vms
                 c_mem_rss = c_mem.rss
-                c_full_mem = child_d["memory_full_info"]
                 c_full_mem_uss = getattr(c_full_mem, "uss", 0)
                 c_full_mem_swap = getattr(c_full_mem, "swap", 0)
-                c_io = child_d["io_counters"]
                 metrics = (
                     timestamp_str,
                     child_pid_str,
@@ -633,12 +636,12 @@ def process_metrics_collector(
                     " ".join(map(str, child_d["threads_core_num"])),
                     " ".join(map(str, child_d["threads_cpu_num"])),
                     str(child_d["status"]),
-                    str(c_io.read_count),
-                    str(c_io.write_count),
-                    str(c_io.read_bytes),
-                    str(c_io.write_bytes),
-                    str(c_io.read_chars),
-                    str(c_io.write_chars),
+                    str(getattr(c_io, "read_count", 0)),
+                    str(getattr(c_io, "write_count", 0)),
+                    str(getattr(c_io, "read_bytes", 0)),
+                    str(getattr(c_io, "write_bytes", 0)),
+                    str(getattr(c_io, "read_chars", 0)),
+                    str(getattr(c_io, "write_chars", 0)),
                 )
 
                 # Aggregated statistics
