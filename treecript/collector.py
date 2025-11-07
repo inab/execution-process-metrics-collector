@@ -156,7 +156,6 @@ def analyse_list_of_processes(
                         attrs=[
                             "name",
                             "cpu_times",
-                            "memory_full_info",
                             "net_connections",
                             "pid",
                             "cpu_percent",
@@ -168,6 +167,8 @@ def analyse_list_of_processes(
                             "status",
                             "io_counters",
                             "ppid",
+                            "memory_info",
+                            "memory_full_info",
                         ],
                     )
 
@@ -595,13 +596,18 @@ def process_metrics_collector(
                             tcp_connections += 1
 
                 c_cpu = child_d["cpu_times"]
-                c_mem = child_d["memory_full_info"]
+                c_mem = child_d["memory_info"]
+                c_mem_vms = c_mem.vms
+                c_mem_rss = c_mem.rss
+                c_full_mem = child_d["memory_full_info"]
+                c_full_mem_uss = c_full_mem.uss
+                c_full_mem_swap = c_full_mem.swap
                 c_io = child_d["io_counters"]
                 metrics = (
                     timestamp_str,
                     child_pid_str,
-                    str(c_mem.vms),
-                    str(c_mem.rss),
+                    str(c_mem_vms),
+                    str(c_mem_rss),
                     str(child_d["cpu_percent"]),
                     str(child_d["memory_percent"]),
                     str(tcp_connections),
@@ -611,8 +617,8 @@ def process_metrics_collector(
                     str(c_cpu.children_user),
                     str(c_cpu.children_system),
                     str(c_cpu.iowait),
-                    str(c_mem.uss),
-                    str(c_mem.swap),
+                    str(c_full_mem_uss),
+                    str(c_full_mem_swap),
                     str(len(child_d["threads_processor_num"])),
                     str(len(child_d["threads_core_num"])),
                     str(len(child_d["threads_cpu_num"])),
@@ -633,8 +639,8 @@ def process_metrics_collector(
                 unique_processors.update(child_d["threads_processor_num"])
                 unique_cores.update(child_d["threads_core_num"])
                 unique_cpus.update(child_d["threads_cpu_num"])
-                sumuss += c_mem.uss
-                sumswap += c_mem.swap
+                sumuss += c_full_mem_uss
+                sumswap += c_full_mem_swap
                 sumthreads += child_d["num_threads"]
                 sum_read_count += c_io.read_count
                 sum_write_count += c_io.write_count
