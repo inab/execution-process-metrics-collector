@@ -600,8 +600,8 @@ def process_metrics_collector(
                 c_mem_vms = c_mem.vms
                 c_mem_rss = c_mem.rss
                 c_full_mem = child_d["memory_full_info"]
-                c_full_mem_uss = c_full_mem.uss
-                c_full_mem_swap = c_full_mem.swap
+                c_full_mem_uss = getattr(c_full_mem, "uss", 0)
+                c_full_mem_swap = getattr(c_full_mem, "swap", 0)
                 c_io = child_d["io_counters"]
                 metrics = (
                     timestamp_str,
