@@ -174,70 +174,76 @@ def analyse_list_of_processes(
                         ],
                     )
 
-                    threads_processor_num: "Set[int]" = set()
-                    threads_core_num: "Set[str]" = set()
-                    threads_cpu_num: "Set[str]" = set()
-                    for thr in child_threads:
-                        processor_id: "int" = child_d["cpu_num"]
-                        if thr.id > 0 and thr.id != child_d["pid"]:
-                            try:
-                                processor_id = psutil.Process(thr.id).cpu_num()
-                            except psutil.NoSuchProcess:
-                                # For transient cases
-                                pass
-                        threads_processor_num.add(processor_id)
-                        processor_id_str = str(processor_id)
-
-                        unambiguous_core_id = processor2corecpu[processor_id_str]
-                        threads_core_num.add(unambiguous_core_id[1])
-                        threads_cpu_num.add(unambiguous_core_id[0])
-
-                    child_d["threads_processor_num"] = threads_processor_num
-                    child_d["threads_core_num"] = threads_core_num
-                    child_d["threads_cpu_num"] = threads_cpu_num
-
-                    # First attempt: already recorded
-                    if len(docker_following_pids) > 0:
-                        new_ppid = docker_following_pids.get(child_pid_int)
-                        # Patching the reference to the parent
-                        if new_ppid is not None:
-                            # logger.error(
-                            #    f"switched {child_pid_int} parent: {child_d['ppid']} => {new_ppid}"
-                            # )
-                            child_d["ppid"] = new_ppid
-
-                    # Are there docker instances involved?
+                    # The process suddenly disappeared
                     if (
-                        len(container_data_rw) > 0
-                        and child_d["name"] == "docker"
-                        and child_d["cmdline"][1] == "run"
+                        child_d["cpu_times"] is not None
+                        and child_d["memory_full_info"] is not None
+                        and child_d["cmdline"] is not None
                     ):
-                        # logger.error(f"Candidate docker {child_pid_int}")
-                        # Matching
-                        i_c_t_t: "Optional[int]"
-                        for i_c_t_t, c_t_t in enumerate(container_data_rw):
-                            (
-                                container_id,
-                                container_creation,
-                                container_image,
-                                container_pid,
-                            ) = c_t_t
-                            if (
-                                container_creation > child_d["create_time"]
-                                and container_image in child_d["cmdline"]
-                            ):
-                                new_pid_pairs.append((container_pid, child_pid_int))
+                        threads_processor_num: "Set[int]" = set()
+                        threads_core_num: "Set[str]" = set()
+                        threads_cpu_num: "Set[str]" = set()
+                        for thr in child_threads:
+                            processor_id: "int" = child_d["cpu_num"]
+                            if thr.id > 0 and thr.id != child_d["pid"]:
+                                try:
+                                    processor_id = psutil.Process(thr.id).cpu_num()
+                                except psutil.NoSuchProcess:
+                                    # For transient cases
+                                    pass
+                            threads_processor_num.add(processor_id)
+                            processor_id_str = str(processor_id)
+
+                            unambiguous_core_id = processor2corecpu[processor_id_str]
+                            threads_core_num.add(unambiguous_core_id[1])
+                            threads_cpu_num.add(unambiguous_core_id[0])
+
+                        child_d["threads_processor_num"] = threads_processor_num
+                        child_d["threads_core_num"] = threads_core_num
+                        child_d["threads_cpu_num"] = threads_cpu_num
+
+                        # First attempt: already recorded
+                        if len(docker_following_pids) > 0:
+                            new_ppid = docker_following_pids.get(child_pid_int)
+                            # Patching the reference to the parent
+                            if new_ppid is not None:
                                 # logger.error(
-                                #    f"Matched docker {child_pid_int} => child {container_pid}"
+                                #    f"switched {child_pid_int} parent: {child_d['ppid']} => {new_ppid}"
                                 # )
-                                break
-                        else:
-                            i_c_t_t = None
+                                child_d["ppid"] = new_ppid
 
-                        if i_c_t_t is not None:
-                            del container_data_rw[i_c_t_t]
+                        # Are there docker instances involved?
+                        if (
+                            len(container_data_rw) > 0
+                            and child_d["name"] == "docker"
+                            and child_d["cmdline"][1] == "run"
+                        ):
+                            # logger.error(f"Candidate docker {child_pid_int}")
+                            # Matching
+                            i_c_t_t: "Optional[int]"
+                            for i_c_t_t, c_t_t in enumerate(container_data_rw):
+                                (
+                                    container_id,
+                                    container_creation,
+                                    container_image,
+                                    container_pid,
+                                ) = c_t_t
+                                if (
+                                    container_creation > child_d["create_time"]
+                                    and container_image in child_d["cmdline"]
+                                ):
+                                    new_pid_pairs.append((container_pid, child_pid_int))
+                                    # logger.error(
+                                    #    f"Matched docker {child_pid_int} => child {container_pid}"
+                                    # )
+                                    break
+                            else:
+                                i_c_t_t = None
 
-                    children_dicts.append((child_d, mode_w))
+                            if i_c_t_t is not None:
+                                del container_data_rw[i_c_t_t]
+
+                        children_dicts.append((child_d, mode_w))
                 elif mode_w == "w" and child_pid_int in recorded_pids:
                     # Keeping the internal structures tidied up
                     del recorded_pids[child_pid_int]
