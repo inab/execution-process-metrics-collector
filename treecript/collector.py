@@ -18,14 +18,17 @@
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <https://www.gnu.org/licenses/>.
 
+import atexit
 import copy
 import datetime
 import docker
 import json
 import logging
+import os
 import pathlib
 import psutil
 import re
+import signal
 import socket
 import subprocess
 import time
@@ -257,7 +260,11 @@ def execution_metrics_collector(
     timestamp_format: "str" = "%Y-%m-%d %H:%M:%S",
     match_docker: "bool" = False,
 ) -> "pathlib.Path":
-    pop = subprocess.Popen(cmdline)
+    pop = subprocess.Popen(cmdline, preexec_fn=os.setsid)
+    # Just to be sure every descendant disappears
+    atexit.register(
+        os.killpg, os.getpgid(pop.pid), getattr(signal, "SIGKILL", signal.SIGTERM)
+    )
     metrics_path = process_metrics_collector(
         pop.pid,
         reldatadir,
