@@ -158,6 +158,7 @@ def analyse_list_of_processes(
                     child_d = child.as_dict(
                         attrs=[
                             "name",
+                            "cmdline",
                             "cpu_times",
                             "memory_full_info",
                             "io_counters",
@@ -167,7 +168,6 @@ def analyse_list_of_processes(
                             "memory_percent",
                             "num_threads",
                             "cpu_num",
-                            "cmdline",
                             "create_time",
                             "status",
                             "ppid",
@@ -545,7 +545,7 @@ def process_metrics_collector(
             c_io = child_d["io_counters"]
             c_conn = child_d["net_connections"]
             # The process suddenly disappeared
-            if c_cpu is None or c_full_mem is None:
+            if c_cpu is None or c_full_mem is None or child_d["cmdline"] is None:
                 continue
 
             if mode_w == "w":
