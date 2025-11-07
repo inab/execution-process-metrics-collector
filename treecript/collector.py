@@ -280,6 +280,8 @@ def execution_metrics_collector(
     )
     # Just for completeness
     pop.wait()
+    # This is needed to avoid an exception on properly finished executions
+    atexit.unregister(os.killpg)
 
     return metrics_path
 
