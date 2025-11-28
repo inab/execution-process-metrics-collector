@@ -621,6 +621,12 @@ def process_metrics_collector(
                 c_mem_rss = c_mem.rss
                 c_full_mem_uss = getattr(c_full_mem, "uss", 0)
                 c_full_mem_swap = getattr(c_full_mem, "swap", 0)
+                c_io_read_count = getattr(c_io, "read_count", 0)
+                c_io_write_count = getattr(c_io, "write_count", 0)
+                c_io_read_bytes = getattr(c_io, "read_bytes", 0)
+                c_io_write_bytes = getattr(c_io, "write_bytes", 0)
+                c_io_read_chars = getattr(c_io, "read_chars", 0)
+                c_io_write_chars = getattr(c_io, "write_chars", 0)
                 metrics = (
                     timestamp_str,
                     child_pid_str,
@@ -644,12 +650,12 @@ def process_metrics_collector(
                     " ".join(map(str, child_d["threads_core_num"])),
                     " ".join(map(str, child_d["threads_cpu_num"])),
                     str(child_d["status"]),
-                    str(getattr(c_io, "read_count", 0)),
-                    str(getattr(c_io, "write_count", 0)),
-                    str(getattr(c_io, "read_bytes", 0)),
-                    str(getattr(c_io, "write_bytes", 0)),
-                    str(getattr(c_io, "read_chars", 0)),
-                    str(getattr(c_io, "write_chars", 0)),
+                    str(c_io_read_count),
+                    str(c_io_write_count),
+                    str(c_io_read_bytes),
+                    str(c_io_write_bytes),
+                    str(c_io_read_chars),
+                    str(c_io_write_chars),
                 )
 
                 # Aggregated statistics
@@ -660,12 +666,12 @@ def process_metrics_collector(
                 sumuss += c_full_mem_uss
                 sumswap += c_full_mem_swap
                 sumthreads += child_d["num_threads"]
-                sum_read_count += c_io.read_count
-                sum_write_count += c_io.write_count
-                sum_read_bytes += c_io.read_bytes
-                sum_write_bytes += c_io.write_bytes
-                sum_read_chars += c_io.read_chars
-                sum_write_chars += c_io.write_chars
+                sum_read_count += c_io_read_count
+                sum_write_count += c_io_write_count
+                sum_read_bytes += c_io_read_bytes
+                sum_write_bytes += c_io_write_bytes
+                sum_read_chars += c_io_read_chars
+                sum_write_chars += c_io_write_chars
 
                 print(",".join(metrics), file=cH)
 
