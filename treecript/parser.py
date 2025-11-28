@@ -48,6 +48,30 @@ from .collector import (
 
 logger = logging.getLogger(__name__)
 
+SINGLE_DOCKER_FLAGS = {
+    "-d",
+    "--detach",
+    "--init",
+    "-i",
+    "--interactive",
+    "--no-healthcheck",
+    "--oom-kill-disable",
+    "--privileged",
+    "-P",
+    "--publish-all",
+    "-q",
+    "--quiet",
+    "--read-only",
+    "--rm",
+    "--sig-proxy",
+    "-t",
+    "--tty",
+    "--use-api-socket",
+    # A couple of common combinations
+    "-ti",
+    "-it",
+}
+
 
 def process_command(command: "Sequence[str]") -> "str":
     basename_command = os.path.basename(command[0])
@@ -65,13 +89,23 @@ def process_command(command: "Sequence[str]") -> "str":
                 retlabel += "\n" + os.path.basename(token)
                 break
     elif basename_command == "docker":
+        is_docker_run = False
+        prev_flag = False
         for token in command[1:]:
-            if token == "stats":
+            if is_docker_run:
+                if token.startswith("-"):
+                    prev_flag = token not in SINGLE_DOCKER_FLAGS
+                elif prev_flag:
+                    prev_flag = False
+                else:
+                    retlabel += "\n" + token
+                    break
+            elif token == "stats":
                 retlabel = "docker stats"
                 break
-            elif not token.startswith("-") and token != "run":
-                retlabel = "docker run\n" + token
-                break
+            elif token == "run":
+                retlabel = "docker run"
+                is_docker_run = True
 
     return retlabel
 
