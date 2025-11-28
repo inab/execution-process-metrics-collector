@@ -421,56 +421,71 @@ def process_metrics_collector(
 
         possible_docker_pids = set()
         if docker_cli is not None:
-            containers = docker_cli.containers.list()
+            tries = 5
+            while tries > 0:
+                try:
+                    containers = docker_cli.containers.list()
 
-            docker_prev_pids = set(docker_following_pids.keys())
-            docker_prev_notpids = set(docker_avoided_pids)
-            for container in containers:
-                container_pid = container.attrs.get("State", {}).get("Pid")
-                if container_pid is not None:
-                    if container_pid in docker_prev_pids:
-                        docker_prev_pids.remove(container_pid)
-                    elif container_pid in docker_prev_notpids:
-                        docker_prev_notpids.remove(container_pid)
-                    else:
-                        possible_docker_pids.add(container_pid)
-                        container_created = container.attrs["Created"]
-                        if sys.version_info < (3, 11):
-                            matched = re.search(
-                                r"\:(\d\d)(?:\.\d+)?Z$", container_created
-                            )
-                            if matched is not None:
-                                container_created = (
-                                    container_created[0 : matched.span()[0]]
-                                    + ":"
-                                    + matched.group(1)
-                                    + "+00:00"
+                    docker_prev_pids = set(docker_following_pids.keys())
+                    docker_prev_notpids = set(docker_avoided_pids)
+                    for container in containers:
+                        container_pid = container.attrs.get("State", {}).get("Pid")
+                        if container_pid is not None:
+                            if container_pid in docker_prev_pids:
+                                docker_prev_pids.remove(container_pid)
+                            elif container_pid in docker_prev_notpids:
+                                docker_prev_notpids.remove(container_pid)
+                            else:
+                                possible_docker_pids.add(container_pid)
+                                container_created = container.attrs["Created"]
+                                if sys.version_info < (3, 11):
+                                    matched = re.search(
+                                        r"\:(\d\d)(?:\.\d+)?Z$", container_created
+                                    )
+                                    if matched is not None:
+                                        container_created = (
+                                            container_created[0 : matched.span()[0]]
+                                            + ":"
+                                            + matched.group(1)
+                                            + "+00:00"
+                                        )
+                                container_data.append(
+                                    (
+                                        container.id,
+                                        datetime.datetime.fromisoformat(
+                                            container_created
+                                        ).timestamp(),
+                                        container.attrs["Config"].get("Image"),
+                                        container_pid,
+                                    )
                                 )
-                        container_data.append(
-                            (
-                                container.id,
-                                datetime.datetime.fromisoformat(
-                                    container_created
-                                ).timestamp(),
-                                container.attrs["Config"].get("Image"),
-                                container_pid,
-                            )
+
+                    # Keeping the internal lists clean
+                    if len(docker_prev_notpids) > 0:
+                        docker_avoided_pids -= docker_prev_notpids
+
+                    # Keeping the internal lists clean
+                    if len(docker_prev_pids) > 0:
+                        for prev_pid in docker_prev_pids:
+                            parent_pid = docker_following_pids.pop(prev_pid)
+                            if parent_pid in docker_followed_pids:
+                                del docker_followed_pids[parent_pid]
+
+                    # Sorting in place by date
+                    if len(container_data) > 1:
+                        container_data.sort(key=lambda c: c[1])
+
+                    break
+                except docker.errors.NotFound:
+                    tries -= 1
+                    if tries == 0:
+                        logger.warning(
+                            "Failed getting the list of docker instances after 5 tries"
                         )
-
-            # Keeping the internal lists clean
-            if len(docker_prev_notpids) > 0:
-                docker_avoided_pids -= docker_prev_notpids
-
-            # Keeping the internal lists clean
-            if len(docker_prev_pids) > 0:
-                for prev_pid in docker_prev_pids:
-                    parent_pid = docker_following_pids.pop(prev_pid)
-                    if parent_pid in docker_followed_pids:
-                        del docker_followed_pids[parent_pid]
-
-            # Sorting in place by date
-            if len(container_data) > 1:
-                container_data.sort(key=lambda c: c[1])
+                        break
+                except BaseException:
+                    logger.warning("Failed to get the list of docker instances")
+                    break
 
         timestamp_str = datetime.datetime.now().strftime(timestamp_format)
 
