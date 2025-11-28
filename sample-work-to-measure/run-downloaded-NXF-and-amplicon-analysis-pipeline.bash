@@ -2,9 +2,9 @@
 
 scriptDir="$(dirname "$(realpath "$0")")"
 
-if [ $# -ge 1 ] ; then
-	workdir="$1"
-	outputdir="$2"
+if [ $# -ge 2 ] ; then
+	workdir="$(realpath "$1")"
+	outputdir="$(realpath "$2")"
 else
 	echo "Usage: $0 {workdir} {outputdir}"
 	exit 1
