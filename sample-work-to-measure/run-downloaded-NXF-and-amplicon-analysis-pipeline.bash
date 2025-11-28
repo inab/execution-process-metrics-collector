@@ -100,6 +100,32 @@ docker {
     autoMounts = true
     registry = "quay.io"
 }
+
+process {
+    // the default resources in conf/base.config are higher than your average laptop
+    // so making these smaller for a local config
+    withLabel:dada2_resources {
+        cpus =   { 4   * task.attempt }
+        memory = { 4.GB * task.attempt }
+        time   = { 8.h   * task.attempt }
+        maxRetries = 3
+    }
+    withLabel:process_medium {
+        cpus   = { 4     * task.attempt }
+        memory = { 4.GB * task.attempt }
+        time   = { 8.h   * task.attempt }
+    }
+    withLabel:medium {
+        cpus   = { 4     * task.attempt }
+        memory = { 4.GB * task.attempt }
+        time   = { 8.h   * task.attempt }
+        maxRetries = 3
+    }
+
+    withName: INFERNAL_CMSEARCH {
+        ext.args = '--noali --hmmonly -Z 1000 -o /dev/null'
+    }
+}
 EOF
 
 nextflow run "${workflowDir}" -c "${workdir}"/custom.conf -params-file "${workdir}"/input_params.yml
