@@ -429,7 +429,12 @@ def process_metrics_collector(
                     docker_prev_pids = set(docker_following_pids.keys())
                     docker_prev_notpids = set(docker_avoided_pids)
                     for container in containers:
-                        container_pid = container.attrs.get("State", {}).get("Pid")
+                        # Skip unidentified container instances
+                        if container.id is None:
+                            continue
+                        container_pid: "Optional[int]" = container.attrs.get(
+                            "State", {}
+                        ).get("Pid")
                         if container_pid is not None:
                             if container_pid in docker_prev_pids:
                                 docker_prev_pids.remove(container_pid)
@@ -449,16 +454,20 @@ def process_metrics_collector(
                                             + matched.group(1)
                                             + "+00:00"
                                         )
-                                container_data.append(
-                                    (
-                                        container.id,
-                                        datetime.datetime.fromisoformat(
-                                            container_created
-                                        ).timestamp(),
-                                        container.attrs["Config"].get("Image"),
-                                        container_pid,
+                                container_image: "Optional[str]" = container.attrs[
+                                    "Config"
+                                ].get("Image")
+                                if container_image is not None:
+                                    container_data.append(
+                                        (
+                                            container.id,
+                                            datetime.datetime.fromisoformat(
+                                                container_created
+                                            ).timestamp(),
+                                            container_image,
+                                            container_pid,
+                                        )
                                     )
-                                )
 
                     # Keeping the internal lists clean
                     if len(docker_prev_notpids) > 0:
