@@ -6,17 +6,17 @@ on:
   push:
     branches: [exec]
     paths-ignore:
-      - 'constraints-*.txt'
+      - 'constraints-*[0-9].txt'
 
 jobs:
   pre-commit:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: [ "3.9", "3.10", "3.11", "3.12", "3.13" ]
+        python-version: [ "3.9", "3.10", "3.11", "3.12", "3.13", "3.14" ]
     name: Pre-commit python ${{ matrix.python-version }}
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
         with:
           fetch-depth: 100
       - uses: actions/setup-python@v6
@@ -54,7 +54,7 @@ jobs:
         run: |
           pip install -r dev-requirements.txt -r mypy-requirements.txt -c constraints-${{ matrix.python-version }}.txt-relaxed
       - name: MyPy cache
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: '.mypy_cache/[0-9]*'
           key: mypy-${{ matrix.python-version }}
@@ -64,7 +64,7 @@ jobs:
         with:
           extra_args: --all -c .pre-commit-config.yaml
  #     - name: 'pre-commit (custom Python ${{ matrix.python-version }})'
- #       uses: pre-commit/action@v3.0.0
+ #       uses: pre-commit/action@v3.0.1
  #       if: ${{ matrix.python-version == '3.6' }}
  #       with:
  #         extra_args: --all -c .pre-commit-config-gh-${{ matrix.python-version }}.yaml
@@ -73,7 +73,6 @@ jobs:
           pytest --cov=treecript
       - name: Get transitive dependencies licences
         id: license_check_print_report
-#        uses: pilosus/action-pip-license-checker@v1.0.0
 #        continue-on-error: true
         uses: pilosus/action-pip-license-checker@v3.1.0
         with:
@@ -88,7 +87,7 @@ jobs:
       - name: Print licences report
         if: ${{ always() }}
         run: echo "${{ steps.license_check_print_report.outputs.report }}"
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v6
         with:
           name: pre-commit-${{ matrix.python-version }}
           retention-days: 2
@@ -105,8 +104,8 @@ jobs:
       - name: Get analysis timestamp
         id: timestamp
         run: echo "timestamp=$(date -Is)" >> "$GITHUB_OUTPUT"
-      - uses: actions/checkout@v5
-      - uses: actions/download-artifact@v5
+      - uses: actions/checkout@v6
+      - uses: actions/download-artifact@v7
         id: download
         with:
           pattern: pre-commit-*
@@ -132,7 +131,7 @@ jobs:
           echo "skip=$skip" >> "$GITHUB_OUTPUT"
       - name: Create Pull Request
         id: cpr
-        uses: peter-evans/create-pull-request@v7
+        uses: peter-evans/create-pull-request@v8
         if: steps.move.outputs.skip == 'false'
         with:
           title: Updated constraints (triggered on ${{ steps.timestamp.outputs.timestamp }} by ${{ github.sha }})

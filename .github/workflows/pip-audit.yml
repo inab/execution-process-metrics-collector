@@ -10,10 +10,10 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: [ "3.9", "3.10", "3.11", "3.12", "3.13" ]
+        python-version: [ "3.9", "3.10", "3.11", "3.12", "3.13", "3.14" ]
     name: pip-audit python ${{ matrix.python-version }}
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
       - uses: actions/setup-python@v6
         with:
           python-version: ${{ matrix.python-version }}
@@ -64,7 +64,7 @@ jobs:
             fi
             cat audit-report-${{ matrix.python-version }}.md >> "$GITHUB_STEP_SUMMARY"
           fi
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v6
         with:
           name: audit-${{ matrix.python-version }}
           retention-days: 2
@@ -83,8 +83,8 @@ jobs:
       - name: Get analysis timestamp
         id: timestamp
         run: echo "timestamp=$(date -Is)" >> "$GITHUB_OUTPUT"
-      - uses: actions/checkout@v5
-      - uses: actions/download-artifact@v5
+      - uses: actions/checkout@v6
+      - uses: actions/download-artifact@v7
         id: download
         with:
           pattern: audit-*
@@ -122,7 +122,7 @@ jobs:
           echo "skip=$skip" >> "$GITHUB_OUTPUT"
       - name: Create Pull Request
         id: cpr
-        uses: peter-evans/create-pull-request@v7
+        uses: peter-evans/create-pull-request@v8
         if: steps.move.outputs.skip == 'false'
         with:
           title: Updated constraints due security reasons (triggered on ${{ steps.timestamp.outputs.timestamp }} by ${{ github.sha }})

@@ -6,7 +6,7 @@ on:
   #push:
   #  branches: [exec]
   #  paths-ignore:
-  #    - 'constraints-*.txt'
+  #    - 'constraints-*_*-wsl.txt'
 
 jobs:
   pre-commit:
@@ -14,7 +14,7 @@ jobs:
     strategy:
       matrix:
 #        python-version: [ "3.12" ]
-        python-version: [ "3.9", "3.10", "3.11", "3.12", "3.13" ]
+        python-version: [ "3.9", "3.10", "3.11", "3.12", "3.13", "3.14" ]
         distribution: [ "Ubuntu-22.04", "Ubuntu-24.04" ]
       max-parallel: 1
     name: Pre-commit WSL python ${{ matrix.python-version }} dist ${{ matrix.distribution }}
@@ -46,7 +46,7 @@ jobs:
             python3-openssl
       - name: Cache pyenv and pip in WSL
         id: cache-pyenv
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: |
             ~/.pyenv
@@ -92,7 +92,7 @@ jobs:
           source .env/bin/activate
           
           pip install --upgrade pip wheel
-          constraints_file="constraints-${{ matrix.python-version }}-wsl.txt"
+          constraints_file="constraints-${{ matrix.python-version }}_${{ matrix.distribution }}-wsl.txt"
           regen_constraints=
           if [ -f "$constraints_file" ] ; then
             at="$(git --no-pager log -p -1 "--format=tformat:%at" --no-patch -- "$constraints_file")"
@@ -118,9 +118,9 @@ jobs:
           cd the_repo
           source .env/bin/activate
           
-          pip install -r dev-requirements.txt -r mypy-requirements.txt -c constraints-${{ matrix.python-version }}-wsl.txt-relaxed
+          pip install -r dev-requirements.txt -r mypy-requirements.txt -c constraints-${{ matrix.python-version }}_${{ matrix.distribution }}-wsl.txt-relaxed
 #      - name: MyPy cache
-#        uses: actions/cache@v4
+#        uses: actions/cache@v5
 #        with:
 #          path: '.mypy_cache/[0-9]*'
 #          key: mypy-${{ matrix.python-version }}
@@ -140,18 +140,18 @@ jobs:
           source .env/bin/activate
           
           pytest --cov=treecript
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v6
         with:
-          name: wsl_pre-commit-${{ matrix.python-version }}-${{ matrix.distribution }}
+          name: wsl_pre-commit-${{ matrix.python-version }}_${{ matrix.distribution }}
           retention-days: 2
-          path: the_repo/constraints-${{ matrix.python-version }}-wsl-${{ matrix.distribution }}.txt
+          path: the_repo/constraints-${{ matrix.python-version }}_${{ matrix.distribution }}-wsl.txt
 
   check_licences:
     runs-on: ubuntu-latest
     strategy:
       matrix:
 #        python-version: [ "3.12" ]
-        python-version: [ "3.9", "3.10", "3.11", "3.12", "3.13" ]
+        python-version: [ "3.9", "3.10", "3.11", "3.12", "3.13", "3.14" ]
         distribution: [ "Ubuntu-22.04", "Ubuntu-24.04" ]
     name: Validate licences of gathered dependencies (WSL python ${{ matrix.python-version }} dist ${{ matrix.distribution }})
     needs:
@@ -160,17 +160,16 @@ jobs:
       - name: Get analysis timestamp
         id: timestamp
         run: echo "timestamp=$(date -Is)" >> "$GITHUB_OUTPUT"
-      - uses: actions/download-artifact@v5
+      - uses: actions/download-artifact@v7
         id: download
         with:
-          name: wsl_pre-commit-${{matrix.python-version}}-${{ matrix.distribution }}
+          name: wsl_pre-commit-${{matrix.python-version}}_${{ matrix.distribution }}
       - name: Get transitive dependencies licences
         id: license_check_print_report
-#        uses: pilosus/action-pip-license-checker@v1.0.0
 #        continue-on-error: true
         uses: pilosus/action-pip-license-checker@v3.1.0
         with:
-          requirements: constraints-${{ matrix.python-version }}-wsl-${{ matrix.distribution }}.txt
+          requirements: constraints-${{ matrix.python-version }}_${{ matrix.distribution }}-wsl.txt
 #      - name: Check transitive dependencies licences
 #        id: license_check_report
 #        uses: pilosus/action-pip-license-checker@v3.1.0
@@ -193,11 +192,11 @@ jobs:
       - name: Get analysis timestamp
         id: timestamp
         run: echo "timestamp=$(date -Is)" >> "$GITHUB_OUTPUT"
-      - uses: actions/checkout@v5
-      - uses: actions/download-artifact@v5
+      - uses: actions/checkout@v6
+      - uses: actions/download-artifact@v7
         id: download
         with:
-          pattern: wsl_pre-commit-*
+          pattern: wsl_pre-commit-*_*
           merge-multiple: true
           path: changes-dir
       - name: Move artifacts to their right place
@@ -205,9 +204,9 @@ jobs:
         run: |
           skip=true
           if [ -d "${{steps.download.outputs.download-path}}" ] ; then
-            for con in "${{steps.download.outputs.download-path}}"/constraints-*-wsl-*.txt ; do
+            for con in "${{steps.download.outputs.download-path}}"/constraints-*_*-wsl.txt ; do
               case "$con" in
-                */constraints-\*-wsl-\*.txt)
+                */constraints-\*_\*-wsl.txt)
                   break
                   ;;
                 *)
@@ -220,12 +219,12 @@ jobs:
           echo "skip=$skip" >> "$GITHUB_OUTPUT"
       - name: Create Pull Request
         id: cpr
-        uses: peter-evans/create-pull-request@v7
+        uses: peter-evans/create-pull-request@v8
         if: steps.move.outputs.skip == 'false'
         with:
           title: Updated WSL constraints (triggered on ${{ steps.timestamp.outputs.timestamp }} by ${{ github.sha }})
           branch: create-pull-request/patch-wsl_constraints
-          add-paths: constraints-*-wsl-*.txt
+          add-paths: constraints-*_*-wsl.txt
           delete-branch: true
           commit-message: "[create-pull-request] Automatically commit updated contents (constraints WSL)"
       - name: Check outputs
