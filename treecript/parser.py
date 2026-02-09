@@ -171,7 +171,7 @@ def metrics_parser(
     pids["parent"] = pids.apply(
         lambda row: str(row.ppid_create_time) + "_" + str(row.PPID)
         if not pd.isna(row.PPID)
-        else None,
+        else pd.NA,
         axis=1,
     )
 
@@ -211,7 +211,7 @@ def metrics_parser(
     pids["command"] = main_commands
     pids["command_label"] = command_labels
     pids["full_command"] = full_command
-    pids["full_stats"] = full_stats
+    pids["full_stats"] = pd.array(full_stats)
     pids["subtree_root"] = subtree_root
 
     return pids, num_cpu_cores, sampling_period_seconds
