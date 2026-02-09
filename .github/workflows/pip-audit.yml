@@ -38,6 +38,7 @@ jobs:
             pip-audit --desc=on --progress-spinner=off -r constraints-${{ matrix.python-version }}.txt --no-deps --disable-pip -f markdown -o /tmp/report-before.md
             refreeze=$?
           else
+            touch /tmp/report-before.md
             refreeze=1
           fi
           set -e
