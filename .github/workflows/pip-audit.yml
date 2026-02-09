@@ -34,8 +34,12 @@ jobs:
         run: |
           source /tmp/PIPAUDIT/bin/activate
           set +e
-          pip-audit --desc=on --progress-spinner=off -r constraints-${{ matrix.python-version }}.txt --no-deps --disable-pip -f markdown -o /tmp/report-before.md
-          refreeze=$?
+          if [ -f constraints-${{ matrix.python-version }}.txt ] ; then
+            pip-audit --desc=on --progress-spinner=off -r constraints-${{ matrix.python-version }}.txt --no-deps --disable-pip -f markdown -o /tmp/report-before.md
+            refreeze=$?
+          else
+            refreeze=1
+          fi
           set -e
           
           if [ "$refreeze" != 0 ] ; then
