@@ -67,9 +67,11 @@ setuptools.setup(
         ]
     },
     scripts=[
+        "cpuinfo-tdp-finder.py",
         "execution-metrics-collector.py",
         "process-metrics-collector.py",
         "metrics-aggregator.py",
+        "modelname-tdp-finder.py",
         "plotGraph.py",
         "tdp-finder.py",
         "execution-metrics-collector.sh",

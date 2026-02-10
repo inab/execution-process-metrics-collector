@@ -3,7 +3,7 @@
 
 # SPDX-License-Identifier: GPL-3.0-or-later
 # treecript, a process tree metrics gatherer.
-# Copyright (C) 2025 Barcelona Supercomputing Center, José M. Fernández
+# Copyright (C) 2026 Barcelona Supercomputing Center, José M. Fernández
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -18,7 +18,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-from treecript.tdp_finder import main_tdp_finder
+from treecript.tdp_finder import main_cpuinfo_tdp_finder
 
 if __name__ == "__main__":
-    main_tdp_finder()
+    main_cpuinfo_tdp_finder()

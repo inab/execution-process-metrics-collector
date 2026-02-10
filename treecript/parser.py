@@ -37,7 +37,7 @@ if TYPE_CHECKING:
 
 import pandas as pd
 
-from .collector import (
+from .common import (
     REFERENCE_PID_FILENAME,
     SAMPLING_PERIOD_FILENAME,
     PIDS_FILENAME,

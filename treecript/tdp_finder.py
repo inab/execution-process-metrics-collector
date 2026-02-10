@@ -21,27 +21,28 @@
 import json
 import logging
 import pathlib
-import re
 import sys
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from typing import (
+        Sequence,
         Tuple,
     )
 
-import pandas as pd
-
-from .collector import (
+from .common import (
     CPU_DETAILS_FILENAME,
+    parse_cpuinfo,
+    tdp_finder_from_cpuinfo,
+    tdp_finder_from_model_name,
 )
 
 logger = logging.getLogger(__name__)
 
 
-def tdp_finder(
+def tdp_finder_from_series(
     series_dir: "pathlib.Path", processors_file: "pathlib.Path"
-) -> "Tuple[str, float]":
+) -> "Sequence[Tuple[str, str, float]]":
     if not series_dir.is_dir():
         logger.error(f"Path {series_dir.as_posix()} is not a directory")
         raise Exception()
@@ -54,61 +55,58 @@ def tdp_finder(
     with cpu_details_filename.open(mode="r", encoding="utf-8") as cF:
         cpu_details = json.load(cF)
 
-    model_name = cpu_details[0]["model name"]
+    return tdp_finder_from_cpuinfo(cpu_details, processors_file)
 
-    # low_memory is needed to avoid a warning in some CSV files with mixed data
-    cpus = pd.read_csv(processors_file, low_memory=False)
 
-    for key_column in ("ProcessorNumber", "Processor Number"):
-        if key_column in cpus.columns:
-            break
-    else:
-        logger.error(
-            f"Unable to find a valid processor identification column in file {processors_file.as_posix()}"
-        )
+def tdp_finder_from_raw(
+    cpuinfo_file: "pathlib.Path", processors_file: "pathlib.Path"
+) -> "Sequence[Tuple[str, str, float]]":
+    if not cpuinfo_file.is_file():
+        logger.error(f"Path {cpuinfo_file.as_posix()} is not a file")
         raise Exception()
 
-    filtered_cpus = cpus[cpus[key_column].apply(lambda pn: str(pn) in model_name)]
+    cpu_hash, processor2corecpu = parse_cpuinfo(cpuinfo_file.as_posix())
 
-    if len(filtered_cpus) == 0:
-        logger.error(
-            f"Unable to match a valid processor row for {model_name} in file {processors_file.as_posix()}"
-        )
-        raise Exception()
-
-    matches = []
-    for column_name, column in filtered_cpus.items():
-        if not column.hasnans:
-            putative_tdp_str = column.values[0]
-            if isinstance(putative_tdp_str, str):
-                matched = re.search(
-                    r"^(?:[0-9]+(?:\.[0-9]+])?-)?([0-9]+(?:\.[0-9]+])?) W",
-                    putative_tdp_str,
-                )
-                if matched:
-                    matches.append((str(column_name), matched.group(1)))
-
-    if len(matches) == 0:
-        logger.error(
-            f"Unable to find processor package consumption values for {model_name} in file {processors_file.as_posix()}"
-        )
-        raise Exception()
-
-    # Now, sort by consumption
-    matches.sort(key=lambda t: t[1], reverse=True)
-
-    return (matches[0][0], float(matches[0][1]))
+    return tdp_finder_from_cpuinfo(list(cpu_hash.values()), processors_file)
 
 
-def main() -> "None":
+def main_tdp_finder() -> "None":
     if len(sys.argv) >= 3:
-        tdp_column, tdp_in_w = tdp_finder(
+        for model_name, tdp_column, tdp_in_w in tdp_finder_from_series(
             pathlib.Path(sys.argv[1]), pathlib.Path(sys.argv[2])
-        )
-        print(f"TDP ({tdp_column}) => {tdp_in_w} W")
+        ):
+            print(f"Model [{model_name}] => TDP [{tdp_column}] => {tdp_in_w} W")
     else:
         print(
             f"Usage: {sys.argv[0]} {{series_dir}} {{intel_datasheets_dir}}",
+            file=sys.stderr,
+        )
+        sys.exit(1)
+
+
+def main_cpuinfo_tdp_finder() -> "None":
+    if len(sys.argv) >= 3:
+        for model_name, tdp_column, tdp_in_w in tdp_finder_from_raw(
+            pathlib.Path(sys.argv[1]), pathlib.Path(sys.argv[2])
+        ):
+            print(f"Model [{model_name}] => TDP [{tdp_column}] => {tdp_in_w} W")
+    else:
+        print(
+            f"Usage: {sys.argv[0]} {{cpuinfo_file}} {{intel_datasheets_dir}}",
+            file=sys.stderr,
+        )
+        sys.exit(1)
+
+
+def main_modelname_tdp_finder() -> "None":
+    if len(sys.argv) >= 3:
+        model_name, tdp_column, tdp_in_w = tdp_finder_from_model_name(
+            sys.argv[1], pathlib.Path(sys.argv[2])
+        )
+        print(f"Model [{model_name}] => TDP [{tdp_column}] => {tdp_in_w} W")
+    else:
+        print(
+            f"Usage: {sys.argv[0]} {{model_string}} {{intel_datasheets_dir}}",
             file=sys.stderr,
         )
         sys.exit(1)

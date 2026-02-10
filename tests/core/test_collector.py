@@ -25,7 +25,7 @@ import shutil
 import subprocess
 
 from treecript.collector import execution_metrics_collector
-from treecript.tdp_finder import tdp_finder
+from treecript.tdp_finder import tdp_finder_from_series
 
 from typing import (
     TYPE_CHECKING,
@@ -88,7 +88,7 @@ CPU_SPEC_DATASET_REPO: "Final[str]" = "https://github.com/JosuaCarl/cpu-spec-dat
 
 
 @COLLECTOR_TESTBED
-def test_tdp_finder(
+def test_tdp_finder_from_series(
     tmpdir: "str",
     command_line: "Sequence[str]",
     should_fail: "Optional[Sequence[str]]",
@@ -110,7 +110,7 @@ def test_tdp_finder(
     assert processors_file.exists()
 
     try:
-        tdp_finder(metrics_path, processors_file)
+        tdp_finder_from_series(metrics_path, processors_file)
     except BaseException:
         current_frame = inspect.currentframe()
         if (
