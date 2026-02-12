@@ -110,7 +110,7 @@ def test_tdp_finder_from_series(
     assert processors_file.exists()
 
     try:
-        tdp_finder_from_series(metrics_path, processors_file)
+        tdp_finder_from_series(metrics_path, [processors_file])
     except BaseException:
         current_frame = inspect.currentframe()
         if (

@@ -115,38 +115,114 @@ interesting metrics.
 python plotGraph.py sample-series/Wetlab2Variations_metrics/2025_05_20-02_19-14001/ dest_directory
 ```
 
-## Digestion
+## TDP (thermal design power) of the used processor
 
-The program `tdp-finder.py` helps to obtain the TDP of an Intel processor, using the gathered metadata stored at `cpu_details.json` within the series directory.
+Next accessory programs help to obtain the TDP of either an Intel or AMD processor, used later to estimate the energy consumption of the processes:
+*  `tdp-finder.py` uses the gathered metadata stored at `cpu_details.json` within a series directory obtained by either `process-metrics-collector.py` or `execution-metrics-collector.py`.
+* `cpuinfo-tdp-finder.py` uses the processor model strings from `/proc/cpuinfo` (or a copy of it).
+* `modelname-tdp-finder.py` uses the processor model string provided through command line.
 
-Repository https://github.com/felixsteinke/cpu-spec-dataset contains at
-[dataset](https://github.com/felixsteinke/cpu-spec-dataset/tree/main/dataset) subdirectory several tables in CSV format with
-this and other details for many Intel, AMD and Ampere processors. The key column here is `ProcessorNumber`.
+Processor TDP specifications are partially available from several sources around internet.
+* Repository https://github.com/felixsteinke/cpu-spec-dataset contains at
+[dataset](https://github.com/felixsteinke/cpu-spec-dataset/tree/main/dataset) subdirectory several tables in CSV format provide details
+for many Intel, AMD and Ampere processors. The key column here is `ProcessorNumber` on Intel CSV file, 'Name' on AMD one, etc...
+* Forked repository https://github.com/JosuaCarl/cpu-spec-dataset contains at
+[dataset](https://github.com/JosuaCarl/cpu-spec-dataset/tree/main/dataset) subdirectory several tables in CSV similar to the ones from original repo, but with different column names. The key column here to match Intel processors is `Processor Number`, for instance.
+* As TDP specifications for many AMD server models are missing from the previous sources, the page https://www.cpubenchmark.net/CPU_mega_page.html provides information for many different models. The downside is that we have detected that some TDP values related to Intel laptop processors might be inaccurate.
 
-Forked repository https://github.com/JosuaCarl/cpu-spec-dataset contains at
-[dataset](https://github.com/JosuaCarl/cpu-spec-dataset/tree/main/dataset) subdirectory tables in CSV similar to the ones from original repo, but with different column names. The key column here to match the processor is `Processor Number`.
-
-Usage would be something like next:
-
-```bash
-git clone https://github.com/felixsteinke/cpu-spec-dataset
-python tdp-finder.py sample-series/Wetlab2Variations_metrics/2025_05_20-02_19-14001/ cpu-spec-dataset/dataset/intel-cpus.csv 
-```
-
-```
-TDP (ConfigTDPMax) => 28.0 W
-```
-
-or
+You can fetch either of the two first datasets just with next commands:
 
 ```bash
+# Recommended
 git clone https://github.com/JosuaCarl/cpu-spec-dataset cpu-spec-dataset_Josua
-python tdp-finder.py sample-series/Wetlab2Variations_metrics/2025_05_20-02_19-14001/ cpu-spec-dataset_Josua/dataset/intel-cpus.csv 
+# or
+git clone https://github.com/felixsteinke/cpu-spec-dataset
+```
+
+For the third source, there is a scraping program within this repository, which writes a trimmed version of the huge table from CPUBenchmark into a CSV file.
+
+```bash
+python -m treecript.tdp_sources cpumark_table.csv
+```
+
+Once these datasets are locally available, usage of `tdp-finder.py` would be something like next, using an already generated (or even ongoing) metrics directory:
+
+```bash
+python tdp-finder.py sample-series/Wetlab2Variations_metrics/2025_05_20-02_19-14001/ cpu-spec-dataset_Josua/dataset/*.csv cpumark_table.csv
 ```
 
 ```
-TDP (Configurable TDP-up) => 28.0 W
+Unable to match a valid processor row for 11th Gen Intel(R) Core(TM) i7-1185G7 @ 3.00GHz in file cpu-spec-dataset_Josua/dataset/amd-cpus.csv
+Unable to match a valid processor row for 11th Gen Intel(R) Core(TM) i7-1185G7 @ 3.00GHz in file cpu-spec-dataset_Josua/dataset/ampere-cpus.csv
+Unable to match a valid processor row for 11th Gen Intel(R) Core(TM) i7-1185G7 @ 3.00GHz in file cpu-spec-dataset_Josua/dataset/benchmark-cpus.csv
+Unable to match a valid processor row for 11th Gen Intel(R) Core(TM) i7-1185G7 @ 3.00GHz in file cpu-spec-dataset_Josua/dataset/cpuworld-cpus.csv
+Model [11th Gen Intel(R) Core(TM) i7-1185G7 @ 3.00GHz] => TDP [Configurable TDP-up] => 28.0 W => File cpu-spec-dataset_Josua/dataset/intel-cpus.csv
 ```
+
+Usage of `cpuinfo-tdp-finder.py` (which does not require to have a gathered metrics directory) would be something like next:
+
+```bash
+python cpuinfo-tdp-finder.py /proc/cpuinfo cpu-spec-dataset_Josua/dataset/*.csv cpumark_table.csv
+```
+
+```
+Unable to match a valid processor row for 11th Gen Intel(R) Core(TM) i7-1185G7 @ 3.00GHz in file cpu-spec-dataset_Josua/dataset/amd-cpus.csv
+Unable to match a valid processor row for 11th Gen Intel(R) Core(TM) i7-1185G7 @ 3.00GHz in file cpu-spec-dataset_Josua/dataset/ampere-cpus.csv
+Unable to match a valid processor row for 11th Gen Intel(R) Core(TM) i7-1185G7 @ 3.00GHz in file cpu-spec-dataset_Josua/dataset/benchmark-cpus.csv
+Unable to match a valid processor row for 11th Gen Intel(R) Core(TM) i7-1185G7 @ 3.00GHz in file cpu-spec-dataset_Josua/dataset/cpuworld-cpus.csv
+Model [11th Gen Intel(R) Core(TM) i7-1185G7 @ 3.00GHz] => TDP [Configurable TDP-up] => 28.0 W => File cpu-spec-dataset_Josua/dataset/intel-cpus.csv
+```
+
+Example with already copied contents from `/proc/cpuinfo`:
+
+```bash
+python cpuinfo-tdp-finder.py sample_cpuinfo/cpuinfo-amd.txt cpu-spec-dataset_Josua/dataset/*.csv cpumark_table.csv
+```
+
+```
+Unable to match a valid processor row for AMD EPYC 7742 64-Core Processor in file cpu-spec-dataset_Josua/dataset/amd-cpus.csv
+Unable to match a valid processor row for AMD EPYC 7742 64-Core Processor in file cpu-spec-dataset_Josua/dataset/ampere-cpus.csv
+Model [AMD EPYC 7742 64-Core Processor] => TDP [TDP] => 225.0 W => File cpu-spec-dataset_Josua/dataset/benchmark-cpus.csv
+```
+
+If we have the processor model string, usage of `modelname-tdp-finder.py` would be something like next:
+
+```bash
+python modelname-tdp-finder.py "11th Gen Intel(R) Core(TM) i7-1185G7 @ 3.00GHz" cpu-spec-dataset_Josua/dataset/*.csv cpumark_table.csv
+```
+
+```
+Unable to match a valid processor row for 11th Gen Intel(R) Core(TM) i7-1185G7 @ 3.00GHz in file cpu-spec-dataset_Josua/dataset/amd-cpus.csv
+Unable to match a valid processor row for 11th Gen Intel(R) Core(TM) i7-1185G7 @ 3.00GHz in file cpu-spec-dataset_Josua/dataset/ampere-cpus.csv
+Unable to match a valid processor row for 11th Gen Intel(R) Core(TM) i7-1185G7 @ 3.00GHz in file cpu-spec-dataset_Josua/dataset/benchmark-cpus.csv
+Unable to match a valid processor row for 11th Gen Intel(R) Core(TM) i7-1185G7 @ 3.00GHz in file cpu-spec-dataset_Josua/dataset/cpuworld-cpus.csv
+Model [11th Gen Intel(R) Core(TM) i7-1185G7 @ 3.00GHz] => TDP [Configurable TDP-up] => 28.0 W => File cpu-spec-dataset_Josua/dataset/intel-cpus.csv
+```
+
+```bash
+python modelname-tdp-finder.py "AMD EPYC 7742 64-Core Processor" cpu-spec-dataset_Josua/dataset/*.csv cpumark_table.csv
+```
+
+```
+Unable to match a valid processor row for AMD EPYC 7742 64-Core Processor in file cpu-spec-dataset_Josua/dataset/amd-cpus.csv
+Unable to match a valid processor row for AMD EPYC 7742 64-Core Processor in file cpu-spec-dataset_Josua/dataset/ampere-cpus.csv
+Model [AMD EPYC 7742 64-Core Processor] => TDP [TDP] => 225.0 W => File cpu-spec-dataset_Josua/dataset/benchmark-cpus.csv
+```
+
+```bash
+python modelname-tdp-finder.py "AMD EPYC 9V74 80-Core Processor" cpu-spec-dataset_Josua/dataset/*.csv cpumark_table.csv
+```
+
+```
+Unable to match a valid processor row for AMD EPYC 9V74 80-Core Processor in file cpu-spec-dataset_Josua/dataset/amd-cpus.csv
+Unable to match a valid processor row for AMD EPYC 9V74 80-Core Processor in file cpu-spec-dataset_Josua/dataset/ampere-cpus.csv
+Unable to match a valid processor row for AMD EPYC 9V74 80-Core Processor in file cpu-spec-dataset_Josua/dataset/benchmark-cpus.csv
+Unable to match a valid processor row for AMD EPYC 9V74 80-Core Processor in file cpu-spec-dataset_Josua/dataset/cpuworld-cpus.csv
+Unable to match a valid processor row for AMD EPYC 9V74 80-Core Processor in file cpu-spec-dataset_Josua/dataset/intel-cpus.csv
+Model [AMD EPYC 9V74 80-Core Processor] => TDP [TDP] => 400.0 W => File cpumark_table.csv
+```
+
+## Digestion
 
 The program `metrics-aggregator.py` is an initial proof of concept to digest the gathered process tree time series. As it tries
 computing the Wh of each part being executed, it needs the TDP (Thermal Design Power) or similar from the CPU.

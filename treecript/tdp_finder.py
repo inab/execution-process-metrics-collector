@@ -41,8 +41,8 @@ logger = logging.getLogger(__name__)
 
 
 def tdp_finder_from_series(
-    series_dir: "pathlib.Path", processors_file: "pathlib.Path"
-) -> "Sequence[Tuple[str, str, float]]":
+    series_dir: "pathlib.Path", processors_files: "Sequence[pathlib.Path]"
+) -> "Sequence[Tuple[str, str, float, pathlib.Path]]":
     if not series_dir.is_dir():
         logger.error(f"Path {series_dir.as_posix()} is not a directory")
         raise Exception()
@@ -55,27 +55,29 @@ def tdp_finder_from_series(
     with cpu_details_filename.open(mode="r", encoding="utf-8") as cF:
         cpu_details = json.load(cF)
 
-    return tdp_finder_from_cpuinfo(cpu_details, processors_file)
+    return tdp_finder_from_cpuinfo(cpu_details, processors_files)
 
 
 def tdp_finder_from_raw(
-    cpuinfo_file: "pathlib.Path", processors_file: "pathlib.Path"
-) -> "Sequence[Tuple[str, str, float]]":
+    cpuinfo_file: "pathlib.Path", processors_files: "Sequence[pathlib.Path]"
+) -> "Sequence[Tuple[str, str, float, pathlib.Path]]":
     if not cpuinfo_file.is_file():
         logger.error(f"Path {cpuinfo_file.as_posix()} is not a file")
         raise Exception()
 
     cpu_hash, processor2corecpu = parse_cpuinfo(cpuinfo_file.as_posix())
 
-    return tdp_finder_from_cpuinfo(list(cpu_hash.values()), processors_file)
+    return tdp_finder_from_cpuinfo(list(cpu_hash.values()), processors_files)
 
 
 def main_tdp_finder() -> "None":
     if len(sys.argv) >= 3:
-        for model_name, tdp_column, tdp_in_w in tdp_finder_from_series(
-            pathlib.Path(sys.argv[1]), pathlib.Path(sys.argv[2])
+        for model_name, tdp_column, tdp_in_w, processors_file in tdp_finder_from_series(
+            pathlib.Path(sys.argv[1]), list(map(pathlib.Path, sys.argv[2:]))
         ):
-            print(f"Model [{model_name}] => TDP [{tdp_column}] => {tdp_in_w} W")
+            print(
+                f"Model [{model_name}] => TDP [{tdp_column}] => {tdp_in_w} W => File {processors_file.as_posix()}"
+            )
     else:
         print(
             f"Usage: {sys.argv[0]} {{series_dir}} {{intel_datasheets_dir}}",
@@ -86,10 +88,12 @@ def main_tdp_finder() -> "None":
 
 def main_cpuinfo_tdp_finder() -> "None":
     if len(sys.argv) >= 3:
-        for model_name, tdp_column, tdp_in_w in tdp_finder_from_raw(
-            pathlib.Path(sys.argv[1]), pathlib.Path(sys.argv[2])
+        for model_name, tdp_column, tdp_in_w, processors_file in tdp_finder_from_raw(
+            pathlib.Path(sys.argv[1]), list(map(pathlib.Path, sys.argv[2:]))
         ):
-            print(f"Model [{model_name}] => TDP [{tdp_column}] => {tdp_in_w} W")
+            print(
+                f"Model [{model_name}] => TDP [{tdp_column}] => {tdp_in_w} W => File {processors_file.as_posix()}"
+            )
     else:
         print(
             f"Usage: {sys.argv[0]} {{cpuinfo_file}} {{intel_datasheets_dir}}",
@@ -100,10 +104,12 @@ def main_cpuinfo_tdp_finder() -> "None":
 
 def main_modelname_tdp_finder() -> "None":
     if len(sys.argv) >= 3:
-        model_name, tdp_column, tdp_in_w = tdp_finder_from_model_name(
-            sys.argv[1], pathlib.Path(sys.argv[2])
+        model_name, tdp_column, tdp_in_w, processors_file = tdp_finder_from_model_name(
+            sys.argv[1], list(map(pathlib.Path, sys.argv[2:]))
         )
-        print(f"Model [{model_name}] => TDP [{tdp_column}] => {tdp_in_w} W")
+        print(
+            f"Model [{model_name}] => TDP [{tdp_column}] => {tdp_in_w} W => File {processors_file.as_posix()}"
+        )
     else:
         print(
             f"Usage: {sys.argv[0]} {{model_string}} {{intel_datasheets_dir}}",
