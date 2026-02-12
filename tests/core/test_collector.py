@@ -105,12 +105,12 @@ def test_tdp_finder_from_series(
 
     assert spec_path.is_dir()
 
-    processors_file = spec_path / "dataset" / "intel-cpus.csv"
+    processors_files = list((spec_path / "dataset").glob("*.csv"))
 
-    assert processors_file.exists()
+    assert len(processors_files) > 0
 
     try:
-        tdp_finder_from_series(metrics_path, [processors_file])
+        tdp_finder_from_series(metrics_path, processors_files)
     except BaseException:
         current_frame = inspect.currentframe()
         if (
