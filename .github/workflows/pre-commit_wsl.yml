@@ -132,16 +132,16 @@ jobs:
           source .env/bin/activate
           
           pre-commit run -a
-      - name: CPU database cache
-        id: cache-cpu-databases
-        uses: actions/cache@v5
+      - name: CPU database cache restore
+        id: cache-cpu-databases-restore
+        uses: actions/cache/restore@v5
         with:
           path: |
             the_repo/cpumark_table.csv
             the_repo/cpu-spec-dataset
-          key: cpu_databases
+          key: cpu_databases_wsl
       - name: CPU database population
-        if: steps.cache-cpu-databases.outputs.cache-hit != 'true'
+        if: steps.cache-cpu-databases-restore.outputs.cache-hit != 'true'
         shell: wsl-bash {0}
         run: |
           source ~/.bash_profile
@@ -150,6 +150,15 @@ jobs:
           
           python -m treecript.tdp_sources cpumark_table.tsv
           git clone https://github.com/JosuaCarl/cpu-spec-dataset
+      - name: CPU database cache save
+        if: steps.cache-cpu-databases-restore.outputs.cache-hit != 'true'
+        id: cache-cpu-databases-save
+        uses: actions/cache/save@v5
+        with:
+          path: |
+            the_repo/cpumark_table.csv
+            the_repo/cpu-spec-dataset
+          key: ${{ steps.cache-cpu-databases-restore.outputs.cache-primary-key }}
       - name: 'pytest + coverage (${{ matrix.python-version }})'
         shell: wsl-bash {0}
         run: |
