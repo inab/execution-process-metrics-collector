@@ -18,10 +18,10 @@
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <https://www.gnu.org/licenses/>.
 
+import argparse
 import json
 import logging
 import pathlib
-import sys
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
@@ -71,48 +71,145 @@ def tdp_finder_from_raw(
 
 
 def main_tdp_finder() -> "None":
-    if len(sys.argv) >= 3:
-        for model_name, tdp_column, tdp_in_w, processors_file in tdp_finder_from_series(
-            pathlib.Path(sys.argv[1]), list(map(pathlib.Path, sys.argv[2:]))
-        ):
+    par_parser = argparse.ArgumentParser()
+
+    meg = par_parser.add_mutually_exclusive_group()
+    meg.add_argument(
+        "-q",
+        dest="logging_level",
+        const=logging.ERROR,
+        help="Be quiet, print only the consumption",
+        action="store_const",
+    )
+    meg.add_argument(
+        "-d",
+        dest="logging_level",
+        const=logging.DEBUG,
+        help="Switch logging to Be quiet, print only the consumption",
+        action="store_const",
+    )
+
+    par_parser.add_argument(
+        "series_dir",
+        help="Directory of the gathered metrics timeline, where the CPU details were recorded",
+    )
+    par_parser.add_argument(
+        "cpu_database_files",
+        nargs="+",
+        help="The CSV files where the list of CPUs are available, along with their consumptions",
+    )
+
+    args = par_parser.parse_args()
+
+    logging_level = (
+        args.logging_level if args.logging_level is not None else logging.WARNING
+    )
+
+    logging.basicConfig(level=logging_level)
+
+    for model_name, tdp_column, tdp_in_w, processors_file in tdp_finder_from_series(
+        pathlib.Path(args.series_dir), list(map(pathlib.Path, args.cpu_database_files))
+    ):
+        if logging_level < logging.ERROR:
             print(
                 f"Model [{model_name}] => TDP [{tdp_column}] => {tdp_in_w} W => File {processors_file.as_posix()}"
             )
-    else:
-        print(
-            f"Usage: {sys.argv[0]} {{series_dir}} {{intel_datasheets_dir}}",
-            file=sys.stderr,
-        )
-        sys.exit(1)
+        else:
+            print(str(tdp_in_w))
 
 
 def main_cpuinfo_tdp_finder() -> "None":
-    if len(sys.argv) >= 3:
-        for model_name, tdp_column, tdp_in_w, processors_file in tdp_finder_from_raw(
-            pathlib.Path(sys.argv[1]), list(map(pathlib.Path, sys.argv[2:]))
-        ):
+    par_parser = argparse.ArgumentParser()
+
+    meg = par_parser.add_mutually_exclusive_group()
+    meg.add_argument(
+        "-q",
+        dest="logging_level",
+        const=logging.ERROR,
+        help="Be quiet, print only the consumption",
+        action="store_const",
+    )
+    meg.add_argument(
+        "-d",
+        dest="logging_level",
+        const=logging.DEBUG,
+        help="Switch logging to Be quiet, print only the consumption",
+        action="store_const",
+    )
+
+    par_parser.add_argument(
+        "cpuinfo_file",
+        help="CPU details provided by Linux kernel, usually available at /proc/cpuinfo",
+    )
+    par_parser.add_argument(
+        "cpu_database_files",
+        nargs="+",
+        help="The CSV files where the list of CPUs are available, along with their consumptions",
+    )
+
+    args = par_parser.parse_args()
+
+    logging_level = (
+        args.logging_level if args.logging_level is not None else logging.WARNING
+    )
+
+    logging.basicConfig(level=logging_level)
+
+    for model_name, tdp_column, tdp_in_w, processors_file in tdp_finder_from_raw(
+        pathlib.Path(args.cpuinfo_file),
+        list(map(pathlib.Path, args.cpu_database_files)),
+    ):
+        if logging_level < logging.ERROR:
             print(
                 f"Model [{model_name}] => TDP [{tdp_column}] => {tdp_in_w} W => File {processors_file.as_posix()}"
             )
-    else:
-        print(
-            f"Usage: {sys.argv[0]} {{cpuinfo_file}} {{intel_datasheets_dir}}",
-            file=sys.stderr,
-        )
-        sys.exit(1)
+        else:
+            print(str(tdp_in_w))
 
 
 def main_modelname_tdp_finder() -> "None":
-    if len(sys.argv) >= 3:
-        model_name, tdp_column, tdp_in_w, processors_file = tdp_finder_from_model_name(
-            sys.argv[1], list(map(pathlib.Path, sys.argv[2:]))
-        )
+    par_parser = argparse.ArgumentParser()
+
+    meg = par_parser.add_mutually_exclusive_group()
+    meg.add_argument(
+        "-q",
+        dest="logging_level",
+        const=logging.ERROR,
+        help="Be quiet, print only the consumption",
+        action="store_const",
+    )
+    meg.add_argument(
+        "-d",
+        dest="logging_level",
+        const=logging.DEBUG,
+        help="Switch logging to Be quiet, print only the consumption",
+        action="store_const",
+    )
+
+    par_parser.add_argument(
+        "model_string",
+        help="Processor model string to be searched",
+    )
+    par_parser.add_argument(
+        "cpu_database_files",
+        nargs="+",
+        help="The CSV files where the list of CPUs are available, along with their consumptions",
+    )
+
+    args = par_parser.parse_args()
+
+    logging_level = (
+        args.logging_level if args.logging_level is not None else logging.WARNING
+    )
+
+    logging.basicConfig(level=logging_level)
+
+    model_name, tdp_column, tdp_in_w, processors_file = tdp_finder_from_model_name(
+        args.model_string, list(map(pathlib.Path, args.cpu_database_files))
+    )
+    if logging_level < logging.ERROR:
         print(
             f"Model [{model_name}] => TDP [{tdp_column}] => {tdp_in_w} W => File {processors_file.as_posix()}"
         )
     else:
-        print(
-            f"Usage: {sys.argv[0]} {{model_string}} {{intel_datasheets_dir}}",
-            file=sys.stderr,
-        )
-        sys.exit(1)
+        print(str(tdp_in_w))

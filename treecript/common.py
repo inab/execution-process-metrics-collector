@@ -150,7 +150,7 @@ def _tdp_finder_from_model_name(
 
     if len(filtered_cpus) == 0:
         errmsg = f"Unable to match a valid processor row for {model_name} in file {processors_file.as_posix()}"
-        logger.error(errmsg)
+        logger.warning(errmsg)
         raise LookupError(errmsg)
 
     matches: "List[Tuple[str, Union[str, float, int]]]" = []
@@ -181,7 +181,7 @@ def _tdp_finder_from_model_name(
         else:
             submsg = "no match on model description"
         errmsg = f"Unable to find processor package consumption values for {model_name} in file {processors_file.as_posix()} ({submsg})"
-        logger.error(errmsg)
+        logger.warning(errmsg)
         raise ValueError(errmsg)
     elif len(matches) > 1:
         # Now, sort by consumption

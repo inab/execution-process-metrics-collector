@@ -145,6 +145,8 @@ For the third source, there is a scraping program within this repository, which 
 python -m treecript.tdp_sources cpumark_table.csv
 ```
 
+### `tdp-finder.py`
+
 Once these datasets are locally available, usage of `tdp-finder.py` would be something like next, using an already generated (or even ongoing) metrics directory:
 
 ```bash
@@ -152,12 +154,24 @@ python tdp-finder.py sample-series/Wetlab2Variations_metrics/2025_05_20-02_19-14
 ```
 
 ```
-Unable to match a valid processor row for 11th Gen Intel(R) Core(TM) i7-1185G7 @ 3.00GHz in file cpu-spec-dataset_Josua/dataset/amd-cpus.csv
-Unable to match a valid processor row for 11th Gen Intel(R) Core(TM) i7-1185G7 @ 3.00GHz in file cpu-spec-dataset_Josua/dataset/ampere-cpus.csv
-Unable to match a valid processor row for 11th Gen Intel(R) Core(TM) i7-1185G7 @ 3.00GHz in file cpu-spec-dataset_Josua/dataset/benchmark-cpus.csv
-Unable to match a valid processor row for 11th Gen Intel(R) Core(TM) i7-1185G7 @ 3.00GHz in file cpu-spec-dataset_Josua/dataset/cpuworld-cpus.csv
+WARNING:treecript.common:Unable to match a valid processor row for 11th Gen Intel(R) Core(TM) i7-1185G7 @ 3.00GHz in file cpu-spec-dataset_Josua/dataset/amd-cpus.csv
+WARNING:treecript.common:Unable to match a valid processor row for 11th Gen Intel(R) Core(TM) i7-1185G7 @ 3.00GHz in file cpu-spec-dataset_Josua/dataset/ampere-cpus.csv
+WARNING:treecript.common:Unable to match a valid processor row for 11th Gen Intel(R) Core(TM) i7-1185G7 @ 3.00GHz in file cpu-spec-dataset_Josua/dataset/benchmark-cpus.csv
+WARNING:treecript.common:Unable to match a valid processor row for 11th Gen Intel(R) Core(TM) i7-1185G7 @ 3.00GHz in file cpu-spec-dataset_Josua/dataset/cpuworld-cpus.csv
 Model [11th Gen Intel(R) Core(TM) i7-1185G7 @ 3.00GHz] => TDP [Configurable TDP-up] => 28.0 W => File cpu-spec-dataset_Josua/dataset/intel-cpus.csv
 ```
+
+In case you want to gather the TDP value without parsing the output, you can use the `-q` parameter:
+
+```bash
+python tdp-finder.py -q sample-series/Wetlab2Variations_metrics/2025_05_20-02_19-14001/ cpu-spec-dataset_Josua/dataset/*.csv cpumark_table.csv
+```
+
+```
+28.0
+```
+
+### `cpuinfo-tdp-finder.py`
 
 Usage of `cpuinfo-tdp-finder.py` (which does not require to have a gathered metrics directory) would be something like next:
 
@@ -166,10 +180,10 @@ python cpuinfo-tdp-finder.py /proc/cpuinfo cpu-spec-dataset_Josua/dataset/*.csv 
 ```
 
 ```
-Unable to match a valid processor row for 11th Gen Intel(R) Core(TM) i7-1185G7 @ 3.00GHz in file cpu-spec-dataset_Josua/dataset/amd-cpus.csv
-Unable to match a valid processor row for 11th Gen Intel(R) Core(TM) i7-1185G7 @ 3.00GHz in file cpu-spec-dataset_Josua/dataset/ampere-cpus.csv
-Unable to match a valid processor row for 11th Gen Intel(R) Core(TM) i7-1185G7 @ 3.00GHz in file cpu-spec-dataset_Josua/dataset/benchmark-cpus.csv
-Unable to match a valid processor row for 11th Gen Intel(R) Core(TM) i7-1185G7 @ 3.00GHz in file cpu-spec-dataset_Josua/dataset/cpuworld-cpus.csv
+WARNING:treecript.common:Unable to match a valid processor row for 11th Gen Intel(R) Core(TM) i7-1185G7 @ 3.00GHz in file cpu-spec-dataset_Josua/dataset/amd-cpus.csv
+WARNING:treecript.common:Unable to match a valid processor row for 11th Gen Intel(R) Core(TM) i7-1185G7 @ 3.00GHz in file cpu-spec-dataset_Josua/dataset/ampere-cpus.csv
+WARNING:treecript.common:Unable to match a valid processor row for 11th Gen Intel(R) Core(TM) i7-1185G7 @ 3.00GHz in file cpu-spec-dataset_Josua/dataset/benchmark-cpus.csv
+WARNING:treecript.common:Unable to match a valid processor row for 11th Gen Intel(R) Core(TM) i7-1185G7 @ 3.00GHz in file cpu-spec-dataset_Josua/dataset/cpuworld-cpus.csv
 Model [11th Gen Intel(R) Core(TM) i7-1185G7 @ 3.00GHz] => TDP [Configurable TDP-up] => 28.0 W => File cpu-spec-dataset_Josua/dataset/intel-cpus.csv
 ```
 
@@ -180,10 +194,12 @@ python cpuinfo-tdp-finder.py sample_cpuinfo/cpuinfo-amd.txt cpu-spec-dataset_Jos
 ```
 
 ```
-Unable to match a valid processor row for AMD EPYC 7742 64-Core Processor in file cpu-spec-dataset_Josua/dataset/amd-cpus.csv
-Unable to match a valid processor row for AMD EPYC 7742 64-Core Processor in file cpu-spec-dataset_Josua/dataset/ampere-cpus.csv
+WARNING:treecript.common:Unable to match a valid processor row for AMD EPYC 7742 64-Core Processor in file cpu-spec-dataset_Josua/dataset/amd-cpus.csv
+WARNING:treecript.common:Unable to match a valid processor row for AMD EPYC 7742 64-Core Processor in file cpu-spec-dataset_Josua/dataset/ampere-cpus.csv
 Model [AMD EPYC 7742 64-Core Processor] => TDP [TDP] => 225.0 W => File cpu-spec-dataset_Josua/dataset/benchmark-cpus.csv
 ```
+
+### `modelname-tdp-finder.py`
 
 If we have the processor model string, usage of `modelname-tdp-finder.py` would be something like next:
 
@@ -192,10 +208,10 @@ python modelname-tdp-finder.py "11th Gen Intel(R) Core(TM) i7-1185G7 @ 3.00GHz" 
 ```
 
 ```
-Unable to match a valid processor row for 11th Gen Intel(R) Core(TM) i7-1185G7 @ 3.00GHz in file cpu-spec-dataset_Josua/dataset/amd-cpus.csv
-Unable to match a valid processor row for 11th Gen Intel(R) Core(TM) i7-1185G7 @ 3.00GHz in file cpu-spec-dataset_Josua/dataset/ampere-cpus.csv
-Unable to match a valid processor row for 11th Gen Intel(R) Core(TM) i7-1185G7 @ 3.00GHz in file cpu-spec-dataset_Josua/dataset/benchmark-cpus.csv
-Unable to match a valid processor row for 11th Gen Intel(R) Core(TM) i7-1185G7 @ 3.00GHz in file cpu-spec-dataset_Josua/dataset/cpuworld-cpus.csv
+WARNING:treecript.common:Unable to match a valid processor row for 11th Gen Intel(R) Core(TM) i7-1185G7 @ 3.00GHz in file cpu-spec-dataset_Josua/dataset/amd-cpus.csv
+WARNING:treecript.common:Unable to match a valid processor row for 11th Gen Intel(R) Core(TM) i7-1185G7 @ 3.00GHz in file cpu-spec-dataset_Josua/dataset/ampere-cpus.csv
+WARNING:treecript.common:Unable to match a valid processor row for 11th Gen Intel(R) Core(TM) i7-1185G7 @ 3.00GHz in file cpu-spec-dataset_Josua/dataset/benchmark-cpus.csv
+WARNING:treecript.common:Unable to match a valid processor row for 11th Gen Intel(R) Core(TM) i7-1185G7 @ 3.00GHz in file cpu-spec-dataset_Josua/dataset/cpuworld-cpus.csv
 Model [11th Gen Intel(R) Core(TM) i7-1185G7 @ 3.00GHz] => TDP [Configurable TDP-up] => 28.0 W => File cpu-spec-dataset_Josua/dataset/intel-cpus.csv
 ```
 
@@ -204,8 +220,8 @@ python modelname-tdp-finder.py "AMD EPYC 7742 64-Core Processor" cpu-spec-datase
 ```
 
 ```
-Unable to match a valid processor row for AMD EPYC 7742 64-Core Processor in file cpu-spec-dataset_Josua/dataset/amd-cpus.csv
-Unable to match a valid processor row for AMD EPYC 7742 64-Core Processor in file cpu-spec-dataset_Josua/dataset/ampere-cpus.csv
+WARNING:treecript.common:Unable to match a valid processor row for AMD EPYC 7742 64-Core Processor in file cpu-spec-dataset_Josua/dataset/amd-cpus.csv
+WARNING:treecript.common:Unable to match a valid processor row for AMD EPYC 7742 64-Core Processor in file cpu-spec-dataset_Josua/dataset/ampere-cpus.csv
 Model [AMD EPYC 7742 64-Core Processor] => TDP [TDP] => 225.0 W => File cpu-spec-dataset_Josua/dataset/benchmark-cpus.csv
 ```
 
@@ -214,11 +230,11 @@ python modelname-tdp-finder.py "AMD EPYC 9V74 80-Core Processor" cpu-spec-datase
 ```
 
 ```
-Unable to match a valid processor row for AMD EPYC 9V74 80-Core Processor in file cpu-spec-dataset_Josua/dataset/amd-cpus.csv
-Unable to match a valid processor row for AMD EPYC 9V74 80-Core Processor in file cpu-spec-dataset_Josua/dataset/ampere-cpus.csv
-Unable to match a valid processor row for AMD EPYC 9V74 80-Core Processor in file cpu-spec-dataset_Josua/dataset/benchmark-cpus.csv
-Unable to match a valid processor row for AMD EPYC 9V74 80-Core Processor in file cpu-spec-dataset_Josua/dataset/cpuworld-cpus.csv
-Unable to match a valid processor row for AMD EPYC 9V74 80-Core Processor in file cpu-spec-dataset_Josua/dataset/intel-cpus.csv
+WARNING:treecript.common:Unable to match a valid processor row for AMD EPYC 9V74 80-Core Processor in file cpu-spec-dataset_Josua/dataset/amd-cpus.csv
+WARNING:treecript.common:Unable to match a valid processor row for AMD EPYC 9V74 80-Core Processor in file cpu-spec-dataset_Josua/dataset/ampere-cpus.csv
+WARNING:treecript.common:Unable to match a valid processor row for AMD EPYC 9V74 80-Core Processor in file cpu-spec-dataset_Josua/dataset/benchmark-cpus.csv
+WARNING:treecript.common:Unable to match a valid processor row for AMD EPYC 9V74 80-Core Processor in file cpu-spec-dataset_Josua/dataset/cpuworld-cpus.csv
+WARNING:treecript.common:Unable to match a valid processor row for AMD EPYC 9V74 80-Core Processor in file cpu-spec-dataset_Josua/dataset/intel-cpus.csv
 Model [AMD EPYC 9V74 80-Core Processor] => TDP [TDP] => 400.0 W => File cpumark_table.csv
 ```
 
