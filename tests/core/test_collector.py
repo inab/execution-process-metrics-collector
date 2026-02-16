@@ -20,12 +20,14 @@
 
 import pytest
 import inspect
+import os
 import pathlib
 import shutil
 import subprocess
 
 from treecript.collector import execution_metrics_collector
 from treecript.tdp_finder import tdp_finder_from_series
+from treecript import tdp_sources
 
 from typing import (
     TYPE_CHECKING,
@@ -96,6 +98,12 @@ def test_tdp_finder_from_series(
     metrics_path = test_collector(tmpdir, command_line, should_fail)
 
     spec_path = pathlib.Path(tmpdir) / "cpu_spec_dataset"
+    # Try materialising from cached contents
+    if not spec_path.exists():
+        source_spec_path = os.environ.get("CACHED_CPU_SPEC_DATASET")
+        if source_spec_path is not None and os.path.exists(source_spec_path):
+            shutil.copytree(source_spec_path, spec_path)
+
     if not spec_path.exists():
         git_path = shutil.which("git")
         assert git_path is not None, "git not found"
@@ -108,6 +116,20 @@ def test_tdp_finder_from_series(
     processors_files = list((spec_path / "dataset").glob("*.csv"))
 
     assert len(processors_files) > 0
+
+    # Try materialising from cached contents
+    cpumark_path = pathlib.Path(tmpdir) / "cpumark_table.csv"
+    if not cpumark_path.exists():
+        source_cpumark_path = os.environ.get("CACHED_CPUMARK_DATASET")
+        if source_cpumark_path is not None and os.path.exists(source_cpumark_path):
+            shutil.copy2(source_cpumark_path, cpumark_path, follow_symlinks=False)
+
+    if not cpumark_path.exists():
+        tdp_sources.scrape_tdp_table_cpubenchmark(cpumark_path)
+
+    assert cpumark_path.is_file()
+
+    processors_files.append(cpumark_path)
 
     try:
         tdp_finder_from_series(metrics_path, processors_files)

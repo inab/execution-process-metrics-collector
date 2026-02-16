@@ -68,9 +68,22 @@ jobs:
  #       if: ${{ matrix.python-version == '3.6' }}
  #       with:
  #         extra_args: --all -c .pre-commit-config-gh-${{ matrix.python-version }}.yaml
+      - name: CPU database cache
+        id: cache-cpu-databases
+        uses: actions/cache@v5
+        with:
+          path: |
+            cpumark_table.csv
+            cpu-spec-dataset
+          key: cpu_databases
+      - name: CPU database population
+        if: steps.cache-cpu-databases.outputs.cache-hit != 'true'
+        run: |
+          python -m treecript.tdp_sources cpumark_table.tsv
+          git clone https://github.com/JosuaCarl/cpu-spec-dataset
       - name: 'pytest + coverage (${{ matrix.python-version }})'
         run: |
-          pytest --cov=treecript
+          CACHED_CPU_SPEC_DATASET=${PWD}/cpu-spec-dataset CACHED_CPUMARK_DATASET=${PWD}/cpumark_table.tsv pytest --cov=treecript
       - name: Get transitive dependencies licences
         id: license_check_print_report
 #        continue-on-error: true
