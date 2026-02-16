@@ -142,6 +142,7 @@ jobs:
           key: cpu_databases
       - name: CPU database population
         if: steps.cache-cpu-databases.outputs.cache-hit != 'true'
+        shell: wsl-bash {0}
         run: |
           source ~/.bash_profile
           cd the_repo
