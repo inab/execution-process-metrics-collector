@@ -132,6 +132,23 @@ jobs:
           source .env/bin/activate
           
           pre-commit run -a
+      - name: CPU database cache
+        id: cache-cpu-databases
+        uses: actions/cache@v5
+        with:
+          path: |
+            the_repo/cpumark_table.csv
+            the_repo/cpu-spec-dataset
+          key: cpu_databases
+      - name: CPU database population
+        if: steps.cache-cpu-databases.outputs.cache-hit != 'true'
+        run: |
+          source ~/.bash_profile
+          cd the_repo
+          source .env/bin/activate
+          
+          python -m treecript.tdp_sources cpumark_table.tsv
+          git clone https://github.com/JosuaCarl/cpu-spec-dataset
       - name: 'pytest + coverage (${{ matrix.python-version }})'
         shell: wsl-bash {0}
         run: |
@@ -139,7 +156,7 @@ jobs:
           cd the_repo
           source .env/bin/activate
           
-          pytest --cov=treecript
+          CACHED_CPU_SPEC_DATASET=${PWD}/cpu-spec-dataset CACHED_CPUMARK_DATASET=${PWD}/cpumark_table.tsv  pytest --cov=treecript
       - uses: actions/upload-artifact@v6
         with:
           name: wsl_pre-commit-${{ matrix.python-version }}_${{ matrix.distribution }}
