@@ -1,285 +1,454 @@
-# `treecript`: Process tree metrics transcriptor (originally `Execution Process Metrics Collector`)
+# `treecript`: Process Tree Metrics Transcriptor
 
-A set of python programs and a set of bash scripts to monitor, collect, and digest metrics of a given Linux process or command line, and its descendants.
+> Originally named *Execution Process Metrics Collector*
 
-These programs have been initially developed for ELIXIR STEERS.
+A set of Python programs to monitor, collect, and digest metrics of a given Linux process or command line, and its descendants. Initially developed for [ELIXIR STEERS](https://elixir-europe.org/internal-projects/commissioned-services/steers).
 
-## Files created and values collected by `process-metrics-collector.py`
+---
 
-This python program uses [psutil](https://github.com/giampaolo/psutil) library to collect the samples at an interval of 1 second (this could vary slightly, but always there will be a minimum of 1 second interval).
+## Table of Contents
 
-A subdirectory is created for each execution being inspected, whose name is based on when the sample collection started and the process. Each subdirectory has next files:
+- [Installation](#installation)
+  - [Option 1: pip + virtual environment (venv)](#option-1-pip--virtual-environment-venv)
+  - [Option 2: Conda environment](#option-2-conda-environment)
+- [Quick Start](#quick-start)
+- [Programs Reference](#programs-reference)
+  - [Collecting metrics](#collecting-metrics)
+  - [Plotting time series charts](#plotting-time-series-charts)
+  - [Finding CPU TDP](#finding-cpu-tdp)
+  - [Digesting metrics](#digesting-metrics)
+- [CPU Dataset Setup](#cpu-dataset-setup)
+- [Output Files Reference](#output-files-reference)
+- [Legacy](#legacy)
+- [License](#license)
 
-* `reference_pid.txt`: The pid of the main process being inspected.
+---
 
-* `sampling-rate-seconds.txt`: The sampling rate, in seconds (usually 1).
+## Installation
 
-* `pids.txt`: A tabular file containing when each descendant process being spawned was created and the assigned pid.
+### Prerequisites
 
-  * `Time`: Sample timestamp (first time the process was detected).
-  * `PID`: Process id.
-  * `create_time`: When the process was created.
-  * `PPID`: Parent process id. It is a '-' for the root process being monitored.
-  * `ppid_create_time`: When the parent process was created. It is a '-' for the root process being monitored.
+- Linux OS (Ubuntu recommended)
+- Python 3.9 or newer
+- Git
 
-* `agg_metrics.tsv`: A tabular file containing the time series of aggregated metrics.
+### Not sure which installation method to use?
 
-  * Timestamp.
-  * Number of pids monitored in that moment.
-  * Number of threads.
-  * Number of different processors where all the processes and threads were running.
-  * Number of different cores where all the processes and threads were running.
-  * Number of different physical CPUs where all the processes and threads were running.
-  * Ids of the physical CPUs, separated by spaces. This is needed for future, accurate computation of carbon footprint of the computation.
-  * User memory associated to all the monitored processes.
-  * Swap memory associated to all the monitored processes.
-  * Number of read operations performed by all the active processes.
-  * Number of write operations performed by all the active processes.
-  * Number of bytes physically read by all the active processes.
-  * Number of bytes physically written by all the active processes.
-  * Number of bytes read (either physically or from cache) by all the active processes.
-  * Number of bytes written (either physically or from cache) by all the active processes.
+| I want to... | Use |
+|---|---|
+| Keep things simple and already have Python installed | **Option 1 — pip + venv** |
+| Already use conda or manage multiple projects/environments | **Option 2 — Conda** |
+| Work on an HPC or shared cluster environment (e.g. BSC) | **Option 2 — Conda** |
+| Work on a machine with a corporate or university firewall | Either — both have firewall notes in their respective sections |
 
-* `command-{pid}_{create_time}.txt`: For each created process **{pid}** which was created at **{create_time}**, a file containing the linearized command line is created.
+---
 
-* `command-{pid}_{create_time}.json`: For each created process **{pid}** which was created at **{create_time}**, a file containing the JSON representation of the command line is created.
+### Choosing a constraints file
 
-* `metrics-{pid}_{create_time}.csv`: A comma-separated values file containing the time series of metrics associated to the process **{pid}** which was created at **{create_time}**. The documentation is based on [psutil.Process.memory_info](https://psutil.readthedocs.io/en/latest/#psutil.Process.memory_info), [psutil.Process.cpu_percent](https://psutil.readthedocs.io/en/latest/#psutil.Process.cpu_percent), [psutil.Process.memory_percent](https://psutil.readthedocs.io/en/latest/#psutil.Process.memory_percent), [psutil.Process.num_threads](https://psutil.readthedocs.io/en/latest/#psutil.Process.num_threads), [psutil.Process.cpu_times](https://psutil.readthedocs.io/en/latest/#psutil.Process.cpu_times) and [psutil.Process.memory_full_info](https://psutil.readthedocs.io/en/latest/#psutil.Process.memory_full_info).
+The repository ships per-version constraints files under the `installation/` directory to ensure a working set of dependencies. Pick the one that matches your setup:
 
-  * `Time`: Sample timestamp.
-  * `PID`: Process id.
-  * `Virt`: aka "Virtual Memory Size", this is the total amount of virtual memory used by the process. On UNIX it matches `top`‘s VIRT column. On Windows this is an alias for pagefile field and it matches "Mem Usage" "VM Size" column of `taskmgr.exe`.
-  * `Res`: aka "Resident Set Size", this is the non-swapped physical memory a process has used. On UNIX it matches `top`‘s RES column. On Windows this is an alias for wset field and it matches "Mem Usage" column of `taskmgr.exe`.
-  * `CPU`: Return a float representing the process CPU utilization as a percentage which can also be > 100.0 in case of a process running multiple threads on different CPUs.
-  * `Memory`: Compare process memory to total physical system memory and calculate process [RSS](https://en.wikipedia.org/wiki/Resident_set_size) memory utilization as a percentage.
-  * `TCP connections`: number of open TCP connections (useful to understand whether the process is connecting to network resources).
-  * `Thread Count`: The number of threads currently used by this process (non cumulative).
-  * `User`: time spent in user mode (in seconds). When a multithreaded, CPU intensive process can run in parallel, it can be bigger than the elapsed time since the process was started.
-  * `System`: time spent in kernel mode (in seconds). A high system time usage indicates lots of system calls, which might be a clue of an inefficient or an I/O intensive process (e.g. database operations).
-  * `Children_User`: user time of all child processes (always 0 on Windows and macOS).
-  * `Children_System`: system time of all child processes (always 0 on Windows and macOS).
-  * `IO`: (Linux) time spent waiting for blocking I/O to complete. This value is excluded from user and system times count (because the CPU is not doing any work). Intensive operations (like swap related ones) in slow storage are the main source of these stalls.
-  * `uss`: (Linux, macOS, Windows) aka “Unique Set Size”, this is the memory which is unique to a process and which would be freed if the process was terminated right now.
-  * `swap`: (Linux) amount of memory that has been swapped out to disk. It is a sign either of a memory hungry process or a process with memory leaks.
-  * `processor_num`: Number of unique processors used by the process. For instance, if a process has 20 threads, but there are only available 4 processors, the value would be at most 4. The number of available processors is determined by the scheduler and the processor affinity (the processors where the process is allowed to run) attached to the process.
-  * `core_num`: Number of unique CPU cores used by the process. For instance, if a process has 20 threads, but there are only available 4 processors which are in 2 different CPU cores, the value would be at most 2. The number of available CPU cores is indirectly determined by the scheduler and the processor affinity (the cores of the processors where the process is allowed to run) attached to the process.
-  * `cpu_num`: Number of unique physical CPUs used by the process. For instance, if a process has 20 threads, but there are only available 4 processors which are in 2 different cores of the same physical CPU, the value would be 1. The number of available physical CPUs is indirectly determined by the scheduler and the processor affinity (the physical CPUs of the cores of the processors where the process is allowed to run) attached to the process.
-  * `processor_ids`: Ids of the CPU processors, separated by spaces. This could be needed for future, accurate computation of carbon footprint of the computation.
-  * `core_ids`: Ids of the CPU cores, separated by spaces. This could be needed for future, accurate computation of carbon footprint of the computation.
-  * `cpu_ids`: Ids of the physical CPUs, separated by spaces. This is needed for future, accurate computation of carbon footprint of the computation.
-  * `process_status`: String describing the process status.
-  * `read_count`: the number of read operations performed (cumulative). This is supposed to count the number of read-related syscalls such as read() and pread() on UNIX.
-  * `write_count`: the number of write operations performed (cumulative). This is supposed to count the number of write-related syscalls such as write() and pwrite() on UNIX.
-  * `read_bytes`: the number of bytes read in physical disk I/O (for instance, cache miss) (cumulative). Always -1 on BSD.
-  * `write_bytes`: the number of bytes written in physical disk I/O (for instance, after a flush to the storage) (cumulative). Always -1 on BSD.
-  * `read_chars`: the amount of bytes which this process passed to read() and pread() syscalls (cumulative). Differently from read_bytes it doesn’t care whether or not actual physical disk I/O occurred (Linux specific).
-  * `write_chars`: the amount of bytes which this process passed to write() and pwrite() syscalls (cumulative). Differently from write_bytes it doesn’t care whether or not actual physical disk I/O occurred (Linux specific).
+| Situation | Constraints file to use |
+|---|---|
+| Native Linux, Python 3.9 | `installation/constraints-3.9.txt` |
+| Native Linux, Python 3.10 | `installation/constraints-3.10.txt` |
+| Native Linux, Python 3.11 | `installation/constraints-3.11.txt` |
+| Native Linux, Python 3.12 | `installation/constraints-3.12.txt` |
+| Ubuntu 22.04 on WSL (Windows) | `installation/constraints-3.10_Ubuntu-22.04-wsl.txt` |
+| Ubuntu 24.04 on WSL (Windows) | `installation/constraints-3.10_Ubuntu-24.04-wsl.txt` |
 
-* `cpu_details.json`: Parsed information from `/proc/cpuinfo` about the physical CPUs available in the system. Parts of this information are needed for future computation of carbon footprint of the tracked process subtree.
+> **WSL** = Windows Subsystem for Linux — Ubuntu running inside Windows rather than directly on hardware. If you are running Ubuntu natively on your machine, use the plain constraints file. To check:
+> ```bash
+> uname -r  # if the output contains "microsoft" or "WSL", you are on WSL
+> ```
 
-* `core_affinity.json`: Parsed information derived from `/proc/cpuinfo`, which provides the list of processors, as well as the ids of the physical core and CPU where they are.
-
-You have a sample directory obtained from measuring a workflow execution using WfExS-backend workflow orchestrator at
-[sample-series/Wetlab2Variations_metrics/2025_05_20-02_19-14001](sample-series/Wetlab2Variations_metrics/2025_05_20-02_19-14001) using an old version.
-
-The command line is something like:
-
+To check your Python version:
 ```bash
-python execution-metrics-collector.py {base_metrics_directory} {command line} {and} {parameters}
+python3 --version
 ```
 
-The equivalent old wrapper version would be:
+---
+
+### Option 1: pip + virtual environment (venv)
+
+Use this if you already have Python installed on your system and don't use conda. This is the lightest option — it creates an isolated Python environment using only tools that come built into Python, with no additional software required.
 
 ```bash
-./execution-metrics-collector.sh {base_metrics_directory} {command line} {and} {parameters}
+# 1. Create a virtual environment
+python3 -m venv TREECRIPT
+
+# 2. Activate it
+source TREECRIPT/bin/activate
+
+# 3. Upgrade pip and wheel
+pip install --upgrade pip wheel
+
+# 4. Download the constraints file for your Python version (adjust filename as needed)
+wget https://raw.githubusercontent.com/inab/treecript/exec/installation/constraints-3.10.txt
+
+# 5. Install treecript with constraints
+pip install -c constraints-3.10.txt git+https://github.com/inab/treecript.git@exec
 ```
 
-which in its code is just running the command in background, getting the `pid` of the process and running next line with `sample_period` equals to 1 second:
+> **Network issues?** If you are behind a corporate or university firewall (e.g. Fortiguard), add `--no-check-certificate` to the `wget` command.
 
+To deactivate the environment:
 ```bash
-python process-metrics-collector.py {pid} {base_metrics_directory} {sample_period}
+deactivate
 ```
 
-For instance, the sample directory was obtained just running next command line:
-
+To reactivate later:
 ```bash
-~/projects/treecript/execution-metrics-collector.sh ~/projects/treecript/Wetlab2Variations_metrics python WfExS-backend.py -L workflow_examples/local_config.yaml staged-workdir offline-exec 01a1db90-1508-4bad-beb7-7f7989838542
+source TREECRIPT/bin/activate
 ```
 
-## Time series charts
-The program `plotGraph.py` is a replacement for the original `plotGraph.sh`. It generates
-several line charts for each monitored process, comparing the time series of
-interesting metrics.
+---
+
+### Option 2: Conda environment
+
+Use this if you already work with Anaconda or Miniconda, or if you prefer conda for managing environments across multiple projects. Conda handles both Python and system-level dependencies, which makes it particularly well suited for HPC or shared computing environments.
+
+#### Installing Miniconda (if not already installed)
+
+Miniconda is a minimal conda installer — it gives you the `conda` command and Python without bundling hundreds of extra packages like the full Anaconda distribution does.
 
 ```bash
-python plotGraph.py sample-series/Wetlab2Variations_metrics/2025_05_20-02_19-14001/ dest_directory
+# Download installer (add --no-check-certificate if behind a firewall)
+wget https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh -O miniconda.sh
+
+# Run the installer
+bash miniconda.sh
+# - Accept the license
+# - Accept the default install location
+# - Answer "yes" when asked to update your shell profile
+
+# Apply changes to current session
+source ~/.bashrc
+
+# Verify
+conda --version
 ```
 
-## TDP (thermal design power) of the used processor
+> **Network issues?** If `repo.anaconda.com` is blocked by your network, use **Miniforge** instead — it is functionally identical to Miniconda but downloads from GitHub and defaults to the `conda-forge` channel, which is actually a better fit for the scientific packages treecript needs:
+> ```bash
+> wget https://github.com/conda-forge/miniforge/releases/latest/download/Miniforge3-Linux-x86_64.sh -O miniconda.sh
+> bash miniconda.sh
+> ```
 
-Next accessory programs help to obtain the TDP of either an Intel or AMD processor, used later to estimate the energy consumption of the processes:
-*  `tdp-finder.py` uses the gathered metadata stored at `cpu_details.json` within a series directory obtained by either `process-metrics-collector.py` or `execution-metrics-collector.py`.
-* `cpuinfo-tdp-finder.py` uses the processor model strings from `/proc/cpuinfo` (or a copy of it).
-* `modelname-tdp-finder.py` uses the processor model string provided through command line.
-
-Processor TDP specifications are partially available from several sources around internet.
-* Repository https://github.com/felixsteinke/cpu-spec-dataset contains at
-[dataset](https://github.com/felixsteinke/cpu-spec-dataset/tree/main/dataset) subdirectory several tables in CSV format provide details
-for many Intel, AMD and Ampere processors. The key column here is `ProcessorNumber` on Intel CSV file, 'Name' on AMD one, etc...
-* Forked repository https://github.com/JosuaCarl/cpu-spec-dataset contains at
-[dataset](https://github.com/JosuaCarl/cpu-spec-dataset/tree/main/dataset) subdirectory several tables in CSV similar to the ones from original repo, but with different column names. The key column here to match Intel processors is `Processor Number`, for instance.
-* As TDP specifications for many AMD server models are missing from the previous sources, the page https://www.cpubenchmark.net/CPU_mega_page.html provides information for many different models. The downside is that we have detected that some TDP values related to Intel laptop processors might be inaccurate.
-
-You can fetch either of the two first datasets just with next commands:
+#### Creating the treecript conda environment
 
 ```bash
-# Recommended
+# 1. Create a clean environment with Python 3.10
+conda create -n treecript python=3.10 -y
+
+# 2. Activate it
+conda activate treecript
+
+# 3. Download the constraints file (adjust filename for your Python version / OS)
+wget https://raw.githubusercontent.com/inab/treecript/exec/installation/constraints-3.10.txt
+# or for WSL Ubuntu 22.04:
+# wget https://raw.githubusercontent.com/inab/treecript/exec/installation/constraints-3.10_Ubuntu-22.04-wsl.txt
+
+# 4. Install treecript and all dependencies in one shot
+pip install -c constraints-3.10.txt git+https://github.com/inab/treecript.git@exec
+```
+
+To deactivate:
+```bash
+conda deactivate
+```
+
+To remove the environment entirely:
+```bash
+conda deactivate
+conda remove -n treecript --all -y
+```
+
+---
+
+### Verifying the installation
+
+Run this after either installation method to confirm all dependencies are working correctly:
+
+```bash
+python -c "
+import psutil; print('psutil OK:', psutil.__version__)
+import docker; print('docker OK:', docker.__version__)
+import pandas; print('pandas OK:', pandas.__version__)
+import networkx; print('networkx OK:', networkx.__version__)
+import matplotlib; print('matplotlib OK:', matplotlib.__version__)
+import adjustText; print('adjustText OK:', adjustText.__version__)
+import treecript; print('treecript OK')
+"
+```
+
+---
+
+## Quick Start
+
+```bash
+# 1. Collect metrics for a command
+execution-metrics-collector.py ~/my_metrics my_command --arg1 --arg2
+
+# 2. Plot time series charts
+plotGraph.py ~/my_metrics/2025_01_01-00_00-12345/ ~/my_charts/
+
+# 3. Find your CPU's TDP
+tdp-finder.py ~/my_metrics/2025_01_01-00_00-12345/ cpu-spec-dataset_Josua/dataset/*.csv
+
+# 4. Aggregate and estimate energy consumption
+metrics-aggregator.py ~/my_metrics/2025_01_01-00_00-12345/ ~/my_agg/ 28.0
+```
+
+---
+
+## Programs Reference
+
+### Collecting metrics
+
+`execution-metrics-collector.py` runs a command and monitors it and all its child processes:
+
+```bash
+execution-metrics-collector.py {base_metrics_directory} {command} {args...}
+```
+
+Internally this launches the command, captures its PID, and calls `process-metrics-collector.py` with a sampling period of 1 second:
+
+```bash
+process-metrics-collector.py {pid} {base_metrics_directory} {sample_period}
+```
+
+Example:
+```bash
+execution-metrics-collector.py ~/metrics python myscript.py --input data.txt
+```
+
+---
+
+### Plotting time series charts
+
+`plotGraph.py` generates line charts for each monitored process, comparing time series of CPU, memory, I/O and other metrics:
+
+```bash
+plotGraph.py {metrics_directory} {output_directory}
+```
+
+Example:
+```bash
+plotGraph.py ~/metrics/2025_01_01-00_00-12345/ ~/charts/
+```
+
+---
+
+### Finding CPU TDP
+
+Three programs are available depending on what information you have:
+
+#### `tdp-finder.py` — from a metrics directory
+
+```bash
+tdp-finder.py {metrics_directory} {csv_files...}
+```
+
+Example:
+```bash
+tdp-finder.py ~/metrics/2025_01_01-00_00-12345/ cpu-spec-dataset_Josua/dataset/*.csv cpumark_table.csv
+```
+
+Use `-q` for quiet mode (outputs only the TDP value, useful for scripting):
+```bash
+tdp-finder.py -q ~/metrics/2025_01_01-00_00-12345/ cpu-spec-dataset_Josua/dataset/*.csv
+# Output: 28.0
+```
+
+#### `cpuinfo-tdp-finder.py` — from `/proc/cpuinfo`
+
+Does not require a metrics directory:
+
+```bash
+cpuinfo-tdp-finder.py /proc/cpuinfo cpu-spec-dataset_Josua/dataset/*.csv cpumark_table.csv
+```
+
+Or from a saved copy of `/proc/cpuinfo`:
+```bash
+cpuinfo-tdp-finder.py saved_cpuinfo.txt cpu-spec-dataset_Josua/dataset/*.csv
+```
+
+#### `modelname-tdp-finder.py` — from a processor model string
+
+```bash
+modelname-tdp-finder.py "11th Gen Intel(R) Core(TM) i7-1185G7 @ 3.00GHz" cpu-spec-dataset_Josua/dataset/*.csv
+modelname-tdp-finder.py "AMD EPYC 7742 64-Core Processor" cpu-spec-dataset_Josua/dataset/*.csv cpumark_table.csv
+```
+
+---
+
+### Digesting metrics
+
+`metrics-aggregator.py` digests the collected time series and estimates energy consumption per process subtree. It requires the CPU TDP value in Watts.
+
+```bash
+metrics-aggregator.py {metrics_directory} {output_directory} {TDP_watts} [command_filter]
+```
+
+The optional `command_filter` argument filters results to show only processes whose command matches the string (e.g. `"docker run"` to focus on Docker steps).
+
+Example:
+```bash
+metrics-aggregator.py ~/metrics/2025_01_01-00_00-12345/ ~/agg/ 28.0 "docker run"
+```
+
+The output directory will contain:
+- A table of energy consumption per task (stdout)
+- `graph.pdf` / `graph.svg` — process call graph as a tree
+- `spiral-graph.pdf` / `spiral-graph.svg` — process call graph as a spiral
+- `consumptions.pdf` / `consumptions.svg` — barplot of task energy and duration
+- `timeline.pdf` / `timeline.svg` — lollipop chart of task start, duration, and end
+
+![Sample process call graph (tree)](sample-charts/graph.svg)
+![Sample process call graph (spiral)](sample-charts/spiral-graph.svg)
+![Sample task consumptions and duration barplots](sample-charts/consumptions.svg)
+![Sample task executions lollipop](sample-charts/timeline.svg)
+
+---
+
+## CPU Dataset Setup
+
+The TDP programs require one or more CPU specification datasets to look up processor TDP values. Three sources are supported:
+
+**Recommended — JosuaCarl fork** (better column names):
+```bash
 git clone https://github.com/JosuaCarl/cpu-spec-dataset cpu-spec-dataset_Josua
-# or
+```
+
+**Alternative — original felixsteinke repo:**
+```bash
 git clone https://github.com/felixsteinke/cpu-spec-dataset
 ```
 
-For the third source, there is a scraping program within this repository, which writes a trimmed version of the huge table from CPUBenchmark into a CSV file.
-
+**CPUBenchmark scrape** (good coverage for AMD server CPUs):
 ```bash
 python -m treecript.tdp_sources cpumark_table.csv
 ```
 
-### `tdp-finder.py`
+You can pass multiple sources to the TDP programs and they will be tried in order:
+```bash
+tdp-finder.py ~/metrics/dir/ cpu-spec-dataset_Josua/dataset/*.csv cpumark_table.csv
+```
 
-Once these datasets are locally available, usage of `tdp-finder.py` would be something like next, using an already generated (or even ongoing) metrics directory:
+---
+
+## Output Files Reference
+
+Each `execution-metrics-collector.py` run creates a subdirectory named after the start timestamp and PID. It contains:
+
+| File | Description |
+|---|---|
+| `reference_pid.txt` | PID of the root process being monitored |
+| `sampling-rate-seconds.txt` | Sampling rate in seconds (usually 1) |
+| `pids.txt` | Table of all spawned processes with timestamps and parent PIDs |
+| `agg_metrics.tsv` | Time series of aggregated metrics across all processes |
+| `metrics-{pid}_{create_time}.csv` | Per-process time series metrics |
+| `command-{pid}_{create_time}.txt` | Linearized command line for each process |
+| `command-{pid}_{create_time}.json` | JSON representation of the command line |
+| `cpu_details.json` | Physical CPU information from `/proc/cpuinfo` |
+| `core_affinity.json` | Processor-to-core-to-CPU mapping derived from `/proc/cpuinfo` |
+
+### Per-process metrics (`metrics-{pid}_{create_time}.csv`)
+
+| Column | Description |
+|---|---|
+| `Time` | Sample timestamp |
+| `PID` | Process ID |
+| `Virt` | Virtual memory size (matches `top` VIRT) |
+| `Res` | Resident set size — non-swapped physical memory (matches `top` RES) |
+| `CPU` | CPU utilization as a percentage (can exceed 100% for multithreaded processes) |
+| `Memory` | RSS memory as a percentage of total physical system memory |
+| `TCP connections` | Number of open TCP connections |
+| `Thread Count` | Number of threads (non-cumulative) |
+| `User` | Time spent in user mode (seconds) |
+| `System` | Time spent in kernel mode (seconds) |
+| `Children_User` | User time of child processes (always 0 on Windows/macOS) |
+| `Children_System` | System time of child processes (always 0 on Windows/macOS) |
+| `IO` | Time waiting for blocking I/O (Linux only) |
+| `uss` | Unique Set Size — memory freed if this process terminated now |
+| `swap` | Memory swapped out to disk |
+| `processor_num` | Number of unique CPU processors used |
+| `core_num` | Number of unique CPU cores used |
+| `cpu_num` | Number of unique physical CPUs used |
+| `processor_ids` | IDs of CPU processors used (space-separated) |
+| `core_ids` | IDs of CPU cores used (space-separated) |
+| `cpu_ids` | IDs of physical CPUs used (space-separated) |
+| `process_status` | Process status string (e.g. `sleeping`, `running`) |
+| `read_count` | Cumulative number of read syscalls |
+| `write_count` | Cumulative number of write syscalls |
+| `read_bytes` | Bytes physically read from disk (cumulative) |
+| `write_bytes` | Bytes physically written to disk (cumulative) |
+| `read_chars` | Bytes passed to read syscalls (cumulative, Linux only) |
+| `write_chars` | Bytes passed to write syscalls (cumulative, Linux only) |
+
+### Aggregated metrics (`agg_metrics.tsv`)
+
+Each row is a 1-second sample across all monitored processes combined:
+
+| Column | Description |
+|---|---|
+| Timestamp | Sample time |
+| Number of PIDs | Processes monitored at that moment |
+| Threads | Total thread count |
+| Processors | Number of distinct CPU processors in use |
+| Cores | Number of distinct CPU cores in use |
+| Physical CPUs | Number of distinct physical CPUs in use |
+| CPU IDs | IDs of physical CPUs (space-separated) |
+| User memory | Total user memory across all processes |
+| Swap memory | Total swap memory across all processes |
+| Read ops | Total read operations |
+| Write ops | Total write operations |
+| Read bytes | Bytes physically read |
+| Write bytes | Bytes physically written |
+| Read chars | Bytes passed to read syscalls |
+| Write chars | Bytes passed to write syscalls |
+
+---
+
+## Legacy
+
+The `legacy/` directory contains older Bash-based scripts that predate the current Python implementation. They are kept for historical reference but are **no longer maintained or recommended**.
+
+### `execution-metrics-collector.sh`
+
+The original Bash wrapper for launching a command and monitoring it. It runs the command in the background, captures the PID, and calls `process-metrics-collector.py` directly:
 
 ```bash
-python tdp-finder.py sample-series/Wetlab2Variations_metrics/2025_05_20-02_19-14001/ cpu-spec-dataset_Josua/dataset/*.csv cpumark_table.csv
+./legacy/execution-metrics-collector.sh {base_metrics_directory} {command} {args...}
 ```
 
-```
-WARNING:treecript.common:Unable to match a valid processor row for 11th Gen Intel(R) Core(TM) i7-1185G7 @ 3.00GHz in file cpu-spec-dataset_Josua/dataset/amd-cpus.csv
-WARNING:treecript.common:Unable to match a valid processor row for 11th Gen Intel(R) Core(TM) i7-1185G7 @ 3.00GHz in file cpu-spec-dataset_Josua/dataset/ampere-cpus.csv
-WARNING:treecript.common:Unable to match a valid processor row for 11th Gen Intel(R) Core(TM) i7-1185G7 @ 3.00GHz in file cpu-spec-dataset_Josua/dataset/benchmark-cpus.csv
-WARNING:treecript.common:Unable to match a valid processor row for 11th Gen Intel(R) Core(TM) i7-1185G7 @ 3.00GHz in file cpu-spec-dataset_Josua/dataset/cpuworld-cpus.csv
-Model [11th Gen Intel(R) Core(TM) i7-1185G7 @ 3.00GHz] => TDP [Configurable TDP-up] => 28.0 W => File cpu-spec-dataset_Josua/dataset/intel-cpus.csv
-```
-
-In case you want to gather the TDP value without parsing the output, you can use the `-q` parameter:
+This has been superseded by `execution-metrics-collector.py`, which provides the same functionality in a more portable and maintainable way. The sample series included in this repository was originally collected using this script:
 
 ```bash
-python tdp-finder.py -q sample-series/Wetlab2Variations_metrics/2025_05_20-02_19-14001/ cpu-spec-dataset_Josua/dataset/*.csv cpumark_table.csv
+~/projects/treecript/legacy/execution-metrics-collector.sh \
+  ~/projects/treecript/Wetlab2Variations_metrics \
+  python WfExS-backend.py -L workflow_examples/local_config.yaml \
+  staged-workdir offline-exec 01a1db90-1508-4bad-beb7-7f7989838542
 ```
 
-```
-28.0
-```
+### `plotGraph.sh`
 
-### `cpuinfo-tdp-finder.py`
-
-Usage of `cpuinfo-tdp-finder.py` (which does not require to have a gathered metrics directory) would be something like next:
+The original gnuplot-based visualization script. It reads the collected CSV files and generates `.pdf` charts using `gnuplot` (requires `apt install gnuplot`). It has been superseded by `plotGraph.py`, which generates richer charts without requiring gnuplot.
 
 ```bash
-python cpuinfo-tdp-finder.py /proc/cpuinfo cpu-spec-dataset_Josua/dataset/*.csv cpumark_table.csv
+./legacy/plotGraph.sh {metrics_csv_files...}
 ```
 
-```
-WARNING:treecript.common:Unable to match a valid processor row for 11th Gen Intel(R) Core(TM) i7-1185G7 @ 3.00GHz in file cpu-spec-dataset_Josua/dataset/amd-cpus.csv
-WARNING:treecript.common:Unable to match a valid processor row for 11th Gen Intel(R) Core(TM) i7-1185G7 @ 3.00GHz in file cpu-spec-dataset_Josua/dataset/ampere-cpus.csv
-WARNING:treecript.common:Unable to match a valid processor row for 11th Gen Intel(R) Core(TM) i7-1185G7 @ 3.00GHz in file cpu-spec-dataset_Josua/dataset/benchmark-cpus.csv
-WARNING:treecript.common:Unable to match a valid processor row for 11th Gen Intel(R) Core(TM) i7-1185G7 @ 3.00GHz in file cpu-spec-dataset_Josua/dataset/cpuworld-cpus.csv
-Model [11th Gen Intel(R) Core(TM) i7-1185G7 @ 3.00GHz] => TDP [Configurable TDP-up] => 28.0 W => File cpu-spec-dataset_Josua/dataset/intel-cpus.csv
-```
+### `plot-metrics.sh`
 
-Example with already copied contents from `/proc/cpuinfo`:
+An earlier helper script for plotting individual metric files. Also superseded by `plotGraph.py`.
 
-```bash
-python cpuinfo-tdp-finder.py sample_cpuinfo/cpuinfo-amd.txt cpu-spec-dataset_Josua/dataset/*.csv cpumark_table.csv
-```
+> These scripts are no longer actively maintained. For all new usage, prefer the Python equivalents.
 
-```
-WARNING:treecript.common:Unable to match a valid processor row for AMD EPYC 7742 64-Core Processor in file cpu-spec-dataset_Josua/dataset/amd-cpus.csv
-WARNING:treecript.common:Unable to match a valid processor row for AMD EPYC 7742 64-Core Processor in file cpu-spec-dataset_Josua/dataset/ampere-cpus.csv
-Model [AMD EPYC 7742 64-Core Processor] => TDP [TDP] => 225.0 W => File cpu-spec-dataset_Josua/dataset/benchmark-cpus.csv
-```
-
-### `modelname-tdp-finder.py`
-
-If we have the processor model string, usage of `modelname-tdp-finder.py` would be something like next:
-
-```bash
-python modelname-tdp-finder.py "11th Gen Intel(R) Core(TM) i7-1185G7 @ 3.00GHz" cpu-spec-dataset_Josua/dataset/*.csv cpumark_table.csv
-```
-
-```
-WARNING:treecript.common:Unable to match a valid processor row for 11th Gen Intel(R) Core(TM) i7-1185G7 @ 3.00GHz in file cpu-spec-dataset_Josua/dataset/amd-cpus.csv
-WARNING:treecript.common:Unable to match a valid processor row for 11th Gen Intel(R) Core(TM) i7-1185G7 @ 3.00GHz in file cpu-spec-dataset_Josua/dataset/ampere-cpus.csv
-WARNING:treecript.common:Unable to match a valid processor row for 11th Gen Intel(R) Core(TM) i7-1185G7 @ 3.00GHz in file cpu-spec-dataset_Josua/dataset/benchmark-cpus.csv
-WARNING:treecript.common:Unable to match a valid processor row for 11th Gen Intel(R) Core(TM) i7-1185G7 @ 3.00GHz in file cpu-spec-dataset_Josua/dataset/cpuworld-cpus.csv
-Model [11th Gen Intel(R) Core(TM) i7-1185G7 @ 3.00GHz] => TDP [Configurable TDP-up] => 28.0 W => File cpu-spec-dataset_Josua/dataset/intel-cpus.csv
-```
-
-```bash
-python modelname-tdp-finder.py "AMD EPYC 7742 64-Core Processor" cpu-spec-dataset_Josua/dataset/*.csv cpumark_table.csv
-```
-
-```
-WARNING:treecript.common:Unable to match a valid processor row for AMD EPYC 7742 64-Core Processor in file cpu-spec-dataset_Josua/dataset/amd-cpus.csv
-WARNING:treecript.common:Unable to match a valid processor row for AMD EPYC 7742 64-Core Processor in file cpu-spec-dataset_Josua/dataset/ampere-cpus.csv
-Model [AMD EPYC 7742 64-Core Processor] => TDP [TDP] => 225.0 W => File cpu-spec-dataset_Josua/dataset/benchmark-cpus.csv
-```
-
-```bash
-python modelname-tdp-finder.py "AMD EPYC 9V74 80-Core Processor" cpu-spec-dataset_Josua/dataset/*.csv cpumark_table.csv
-```
-
-```
-WARNING:treecript.common:Unable to match a valid processor row for AMD EPYC 9V74 80-Core Processor in file cpu-spec-dataset_Josua/dataset/amd-cpus.csv
-WARNING:treecript.common:Unable to match a valid processor row for AMD EPYC 9V74 80-Core Processor in file cpu-spec-dataset_Josua/dataset/ampere-cpus.csv
-WARNING:treecript.common:Unable to match a valid processor row for AMD EPYC 9V74 80-Core Processor in file cpu-spec-dataset_Josua/dataset/benchmark-cpus.csv
-WARNING:treecript.common:Unable to match a valid processor row for AMD EPYC 9V74 80-Core Processor in file cpu-spec-dataset_Josua/dataset/cpuworld-cpus.csv
-WARNING:treecript.common:Unable to match a valid processor row for AMD EPYC 9V74 80-Core Processor in file cpu-spec-dataset_Josua/dataset/intel-cpus.csv
-Model [AMD EPYC 9V74 80-Core Processor] => TDP [TDP] => 400.0 W => File cpumark_table.csv
-```
-
-## Digestion
-
-The program `metrics-aggregator.py` is an initial proof of concept to digest the gathered process tree time series. As it tries
-computing the Wh of each part being executed, it needs the TDP (Thermal Design Power) or similar from the CPU.
-
-For instance, getting all the consumptions from main steps of a workflow execution (which was using docker for its steps)
-and it was collected, would be:
-
-```bash
-python metrics-aggregator.py sample-series/Wetlab2Variations_metrics/2025_05_20-02_19-14001/ dest_directory 28.0 "docker run"
-```
-
-```
-                     id                                               task       W_h    joules        first_sample         last_sample        duration  duration_in_s
-8   1747700411.64_14234                             8 jlaitinen/lftpalpine  0.000023  0.083231 2025-05-20 02:20:12 2025-05-20 02:20:59 0 days 00:00:47             47
-11  1747700460.91_14462         11 quay.io/biocontainers/samtools:1.3.1--5  0.000012  0.044520 2025-05-20 02:21:02 2025-05-20 02:21:30 0 days 00:00:28             28
-15  1747700493.64_14760  15 quay.io/biocontainers/cutadapt:1.18--py36h1...  0.000193  0.694440 2025-05-20 02:21:34 2025-05-20 02:23:28 0 days 00:01:54            114
-28  1747700608.04_15216         28 quay.io/biocontainers/picard:2.18.25--0  0.000006  0.020150 2025-05-20 02:23:29 2025-05-20 02:23:51 0 days 00:00:22             22
-32  1747700632.46_15945    32 quay.io/biocontainers/bwa:0.7.17--h84994c4_5  0.001796  6.464617 2025-05-20 02:23:53 2025-05-20 03:23:29 0 days 00:59:36           3576
-35  1747704216.72_18987                            35 jlaitinen/lftpalpine  0.000038  0.138433 2025-05-20 03:23:37 2025-05-20 03:24:50 0 days 00:01:13             73
-38   1747704311.5_19163    38 quay.io/biocontainers/bwa:0.7.17--h84994c4_5  0.001231  4.432096 2025-05-20 03:25:12 2025-05-20 03:50:00 0 days 00:24:48           1488
-41  1747705802.95_20626         41 quay.io/biocontainers/samtools:1.3.1--5  0.000075  0.269880 2025-05-20 03:50:04 2025-05-20 03:51:18 0 days 00:01:14             74
-44  1747705879.32_20820         44 quay.io/biocontainers/picard:2.18.25--0  0.000065  0.232261 2025-05-20 03:51:20 2025-05-20 03:54:49 0 days 00:03:29            209
-48  1747706089.46_21177                      48 broadinstitute/gatk3:3.6-0  0.000348  1.254288 2025-05-20 03:54:50 2025-05-20 04:17:46 0 days 00:22:56           1376
-51  1747707464.95_22167                      51 broadinstitute/gatk3:3.6-0  0.000063  0.226953 2025-05-20 04:17:46 2025-05-20 04:21:21 0 days 00:03:35            215
-54  1747707680.85_22476                      54 broadinstitute/gatk3:3.6-0  0.000460  1.656543 2025-05-20 04:21:22 2025-05-20 04:38:39 0 days 00:17:17           1037
-57  1747708718.81_23312                      57 broadinstitute/gatk3:3.6-0  0.000266  0.959036 2025-05-20 04:38:39 2025-05-20 04:53:24 0 days 00:14:45            885
-60  1747709607.25_24083                      60 broadinstitute/gatk3:3.6-0  0.000131  0.472472 2025-05-20 04:53:28 2025-05-20 04:57:30 0 days 00:04:02            242
-```
-
-The `dest_directory` will also contain the process call graph represented both as a tree (`graph.pdf`) and as a spiral (`spiral-graph.pdf`):
-
-![Sample process call graph (tree)](sample-charts/graph.svg)![Sample process call graph (spiral)](sample-charts/spiral-graph.svg)
-
-a barplot representation of both task consumptions and duration and an horizontal lollipop representing the task executions relative start, duration and end:
-
-![Sample task consumptions and duration barplots](sample-charts/consumptions.svg)![Sample task executions lollipop](sample-charts/timeline.svg)
-
-## Visualization (outdated)
-The resulting CSV file is translated to a graph image of `.pdf` type using `gnuplot`. This has to be installed (e.g. `apt install gnuplot` in Ubuntu Xenial onwards) before running this script. There is a single pdf, where its pages are separate graphs for all the above metrics, and a separate one containing all of them together for correlation.
+---
 
 ## License
-Licensed with GNU GPL V3.
 
-This repository is a fork and an evolution from https://github.com/chamilad/process-metrics-collector
+Licensed under **GNU GPL v3**.
+
+This repository is a fork and evolution of [chamilad/process-metrics-collector](https://github.com/chamilad/process-metrics-collector).
