@@ -40,7 +40,7 @@ with open(readme_path, "r") as fh:
 
 # Populating the install requirements
 requirements = []
-requirements_path = os.path.join(setupDir, "requirements.txt")
+requirements_path = os.path.join(setupDir, "installation", "requirements.txt")
 if os.path.exists(requirements_path):
     with open(requirements_path, mode="r", encoding="utf-8") as f:
         egg = re.compile(r"#[^#]*egg=([^=&]+)")
@@ -74,8 +74,9 @@ setuptools.setup(
         "modelname-tdp-finder.py",
         "plotGraph.py",
         "tdp-finder.py",
-        "execution-metrics-collector.sh",
-        "plotGraph.sh",
+        "legacy/execution-metrics-collector.sh",
+        "legacy/plotGraph.sh",
+        "legacy/plot-metrics.sh",
     ],
     install_requires=requirements,
     # See https://pypi.org/classifiers/
