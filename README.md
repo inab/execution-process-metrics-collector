@@ -1,6 +1,6 @@
 # `treecript`: Process Tree Metrics Transcriptor
 
-> Originally named *Execution Process Metrics Collector*
+> Originally named _Execution Process Metrics Collector_
 
 A set of Python programs to monitor, collect, and digest metrics of a given Linux process or command line, and its descendants. Initially developed for [ELIXIR STEERS](https://elixir-europe.org/internal-projects/commissioned-services/steers).
 
@@ -8,19 +8,67 @@ A set of Python programs to monitor, collect, and digest metrics of a given Linu
 
 ## Table of Contents
 
-- [Installation](#installation)
-  - [Option 1: pip + virtual environment (venv)](#option-1-pip--virtual-environment-venv)
-  - [Option 2: Conda environment](#option-2-conda-environment)
-- [Quick Start](#quick-start)
-- [Programs Reference](#programs-reference)
-  - [Collecting metrics](#collecting-metrics)
-  - [Plotting time series charts](#plotting-time-series-charts)
-  - [Finding CPU TDP](#finding-cpu-tdp)
-  - [Digesting metrics](#digesting-metrics)
-- [CPU Dataset Setup](#cpu-dataset-setup)
-- [Output Files Reference](#output-files-reference)
-- [Legacy](#legacy)
-- [License](#license)
+- [`treecript`: Process Tree Metrics Transcriptor](#treecript-process-tree-metrics-transcriptor)
+  - [Table of Contents](#table-of-contents)
+  - [Repository Structure](#repository-structure)
+  - [Installation](#installation)
+    - [Prerequisites](#prerequisites)
+    - [Not sure which installation method to use?](#not-sure-which-installation-method-to-use)
+    - [Choosing a constraints file](#choosing-a-constraints-file)
+    - [Option 1: pip + virtual environment (venv)](#option-1-pip--virtual-environment-venv)
+    - [Option 2: Conda environment](#option-2-conda-environment)
+      - [Installing Miniconda (if not already installed)](#installing-miniconda-if-not-already-installed)
+      - [Creating the treecript conda environment](#creating-the-treecript-conda-environment)
+    - [Verifying the installation](#verifying-the-installation)
+  - [Quick Start](#quick-start)
+  - [Programs Reference](#programs-reference)
+    - [Collecting metrics](#collecting-metrics)
+    - [Plotting time series charts](#plotting-time-series-charts)
+    - [Finding CPU TDP](#finding-cpu-tdp)
+      - [`tdp-finder.py` — from a metrics directory](#tdp-finderpy--from-a-metrics-directory)
+      - [`cpuinfo-tdp-finder.py` — from `/proc/cpuinfo`](#cpuinfo-tdp-finderpy--from-proccpuinfo)
+      - [`modelname-tdp-finder.py` — from a processor model string](#modelname-tdp-finderpy--from-a-processor-model-string)
+    - [Digesting metrics](#digesting-metrics)
+  - [CPU Dataset Setup](#cpu-dataset-setup)
+  - [Output Files Reference](#output-files-reference)
+    - [Per-process metrics (`metrics-{pid}_{create_time}.csv`)](#per-process-metrics-metrics-pid_create_timecsv)
+    - [Aggregated metrics (`agg_metrics.tsv`)](#aggregated-metrics-agg_metricstsv)
+  - [Legacy](#legacy)
+    - [`execution-metrics-collector.sh`](#execution-metrics-collectorsh)
+    - [`plotGraph.sh`](#plotgraphsh)
+    - [`plot-metrics.sh`](#plot-metricssh)
+  - [License](#license)
+
+---
+
+## Repository Structure
+
+```
+treecript/
+├── treecript/               # Core Python package — all program logic lives here
+├── installation/            # Constraints and requirements files for reproducible installs
+├── legacy/                  # Deprecated Bash scripts kept for historical reference
+├── sample-series/           # Real metrics from a WfExS workflow execution, used in documentation examples
+├── sample-charts/           # Pre-generated charts from the sample series, embedded in this README
+├── sample-work-to-measure/  # Example scripts showing how to set up and run a measurement
+├── sample_cpuinfo/          # Example /proc/cpuinfo files for testing the TDP finder programs
+├── onboarding/              # Full worked example with metrics, charts and a step-by-step walkthrough
+├── sample/                  # Legacy single-process sample from 2018 (pre-treecript era)
+└── tests/                   # Unit tests
+```
+
+| Directory                 | Description                                                                                                                                    |
+| ------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
+| `treecript/`              | Core Python package — aggregator, collector, parser, plotter, TDP finder                                                                       |
+| `installation/`           | Per-version constraints files and requirements for reproducible installs                                                                       |
+| `legacy/`                 | Deprecated Bash scripts superseded by the Python programs                                                                                      |
+| `sample-series/`          | Real metrics collected from a WfExS workflow run, used throughout this README as examples                                                      |
+| `sample-charts/`          | Pre-generated chart outputs (SVG/PDF/PNG) from the sample series                                                                               |
+| `sample-work-to-measure/` | Ready-to-use scripts to download and run example workloads to measure                                                                          |
+| `sample_cpuinfo/`         | Example `/proc/cpuinfo` files (Intel and AMD) for testing `cpuinfo-tdp-finder.py` and `modelname-tdp-finder.py` without needing a real machine |
+| `onboarding/`             | Self-contained worked example: a full metrics collection, chart generation and aggregation walkthrough for new users                           |
+| `sample/`                 | Legacy single-process sample from 2018, predating the current process-tree approach                                                            |
+| `tests/`                  | Unit tests for the core collector module                                                                                                       |
 
 ---
 
@@ -34,12 +82,12 @@ A set of Python programs to monitor, collect, and digest metrics of a given Linu
 
 ### Not sure which installation method to use?
 
-| I want to... | Use |
-|---|---|
-| Keep things simple and already have Python installed | **Option 1 — pip + venv** |
-| Already use conda or manage multiple projects/environments | **Option 2 — Conda** |
-| Work on an HPC or shared cluster environment (e.g. BSC) | **Option 2 — Conda** |
-| Work on a machine with a corporate or university firewall | Either — both have firewall notes in their respective sections |
+| I want to...                                               | Use                                                            |
+| ---------------------------------------------------------- | -------------------------------------------------------------- |
+| Keep things simple and already have Python installed       | **Option 1 — pip + venv**                                      |
+| Already use conda or manage multiple projects/environments | **Option 2 — Conda**                                           |
+| Work on an HPC or shared cluster environment (e.g. BSC)    | **Option 2 — Conda**                                           |
+| Work on a machine with a corporate or university firewall  | Either — both have firewall notes in their respective sections |
 
 ---
 
@@ -47,21 +95,23 @@ A set of Python programs to monitor, collect, and digest metrics of a given Linu
 
 The repository ships per-version constraints files under the `installation/` directory to ensure a working set of dependencies. Pick the one that matches your setup:
 
-| Situation | Constraints file to use |
-|---|---|
-| Native Linux, Python 3.9 | `installation/constraints-3.9.txt` |
-| Native Linux, Python 3.10 | `installation/constraints-3.10.txt` |
-| Native Linux, Python 3.11 | `installation/constraints-3.11.txt` |
-| Native Linux, Python 3.12 | `installation/constraints-3.12.txt` |
+| Situation                     | Constraints file to use                              |
+| ----------------------------- | ---------------------------------------------------- |
+| Native Linux, Python 3.9      | `installation/constraints-3.9.txt`                   |
+| Native Linux, Python 3.10     | `installation/constraints-3.10.txt`                  |
+| Native Linux, Python 3.11     | `installation/constraints-3.11.txt`                  |
+| Native Linux, Python 3.12     | `installation/constraints-3.12.txt`                  |
 | Ubuntu 22.04 on WSL (Windows) | `installation/constraints-3.10_Ubuntu-22.04-wsl.txt` |
 | Ubuntu 24.04 on WSL (Windows) | `installation/constraints-3.10_Ubuntu-24.04-wsl.txt` |
 
 > **WSL** = Windows Subsystem for Linux — Ubuntu running inside Windows rather than directly on hardware. If you are running Ubuntu natively on your machine, use the plain constraints file. To check:
+>
 > ```bash
 > uname -r  # if the output contains "microsoft" or "WSL", you are on WSL
 > ```
 
 To check your Python version:
+
 ```bash
 python3 --version
 ```
@@ -92,11 +142,13 @@ pip install -c constraints-3.10.txt git+https://github.com/inab/treecript.git@ex
 > **Network issues?** If you are behind a corporate or university firewall (e.g. Fortiguard), add `--no-check-certificate` to the `wget` command.
 
 To deactivate the environment:
+
 ```bash
 deactivate
 ```
 
 To reactivate later:
+
 ```bash
 source TREECRIPT/bin/activate
 ```
@@ -129,6 +181,7 @@ conda --version
 ```
 
 > **Network issues?** If `repo.anaconda.com` is blocked by your network, use **Miniforge** instead — it is functionally identical to Miniconda but downloads from GitHub and defaults to the `conda-forge` channel, which is actually a better fit for the scientific packages treecript needs:
+>
 > ```bash
 > wget https://github.com/conda-forge/miniforge/releases/latest/download/Miniforge3-Linux-x86_64.sh -O miniconda.sh
 > bash miniconda.sh
@@ -153,11 +206,13 @@ pip install -c constraints-3.10.txt git+https://github.com/inab/treecript.git@ex
 ```
 
 To deactivate:
+
 ```bash
 conda deactivate
 ```
 
 To remove the environment entirely:
+
 ```bash
 conda deactivate
 conda remove -n treecript --all -y
@@ -218,6 +273,7 @@ process-metrics-collector.py {pid} {base_metrics_directory} {sample_period}
 ```
 
 Example:
+
 ```bash
 execution-metrics-collector.py ~/metrics python myscript.py --input data.txt
 ```
@@ -233,6 +289,7 @@ plotGraph.py {metrics_directory} {output_directory}
 ```
 
 Example:
+
 ```bash
 plotGraph.py ~/metrics/2025_01_01-00_00-12345/ ~/charts/
 ```
@@ -250,11 +307,13 @@ tdp-finder.py {metrics_directory} {csv_files...}
 ```
 
 Example:
+
 ```bash
 tdp-finder.py ~/metrics/2025_01_01-00_00-12345/ cpu-spec-dataset_Josua/dataset/*.csv cpumark_table.csv
 ```
 
 Use `-q` for quiet mode (outputs only the TDP value, useful for scripting):
+
 ```bash
 tdp-finder.py -q ~/metrics/2025_01_01-00_00-12345/ cpu-spec-dataset_Josua/dataset/*.csv
 # Output: 28.0
@@ -268,9 +327,10 @@ Does not require a metrics directory:
 cpuinfo-tdp-finder.py /proc/cpuinfo cpu-spec-dataset_Josua/dataset/*.csv cpumark_table.csv
 ```
 
-Or from a saved copy of `/proc/cpuinfo`:
+Or from a saved copy of `/proc/cpuinfo` — the `sample_cpuinfo/` directory contains example files for Intel and AMD processors you can use for testing:
+
 ```bash
-cpuinfo-tdp-finder.py saved_cpuinfo.txt cpu-spec-dataset_Josua/dataset/*.csv
+cpuinfo-tdp-finder.py sample_cpuinfo/cpuinfo-amd.txt cpu-spec-dataset_Josua/dataset/*.csv
 ```
 
 #### `modelname-tdp-finder.py` — from a processor model string
@@ -292,12 +352,14 @@ metrics-aggregator.py {metrics_directory} {output_directory} {TDP_watts} [comman
 
 The optional `command_filter` argument filters results to show only processes whose command matches the string (e.g. `"docker run"` to focus on Docker steps).
 
-Example:
+Example using the included sample series:
+
 ```bash
-metrics-aggregator.py ~/metrics/2025_01_01-00_00-12345/ ~/agg/ 28.0 "docker run"
+metrics-aggregator.py sample-series/Wetlab2Variations_metrics/2025_05_20-02_19-14001/ dest_directory 28.0 "docker run"
 ```
 
 The output directory will contain:
+
 - A table of energy consumption per task (stdout)
 - `graph.pdf` / `graph.svg` — process call graph as a tree
 - `spiral-graph.pdf` / `spiral-graph.svg` — process call graph as a spiral
@@ -316,21 +378,25 @@ The output directory will contain:
 The TDP programs require one or more CPU specification datasets to look up processor TDP values. Three sources are supported:
 
 **Recommended — JosuaCarl fork** (better column names):
+
 ```bash
 git clone https://github.com/JosuaCarl/cpu-spec-dataset cpu-spec-dataset_Josua
 ```
 
 **Alternative — original felixsteinke repo:**
+
 ```bash
 git clone https://github.com/felixsteinke/cpu-spec-dataset
 ```
 
 **CPUBenchmark scrape** (good coverage for AMD server CPUs):
+
 ```bash
 python -m treecript.tdp_sources cpumark_table.csv
 ```
 
 You can pass multiple sources to the TDP programs and they will be tried in order:
+
 ```bash
 tdp-finder.py ~/metrics/dir/ cpu-spec-dataset_Josua/dataset/*.csv cpumark_table.csv
 ```
@@ -341,72 +407,72 @@ tdp-finder.py ~/metrics/dir/ cpu-spec-dataset_Josua/dataset/*.csv cpumark_table.
 
 Each `execution-metrics-collector.py` run creates a subdirectory named after the start timestamp and PID. It contains:
 
-| File | Description |
-|---|---|
-| `reference_pid.txt` | PID of the root process being monitored |
-| `sampling-rate-seconds.txt` | Sampling rate in seconds (usually 1) |
-| `pids.txt` | Table of all spawned processes with timestamps and parent PIDs |
-| `agg_metrics.tsv` | Time series of aggregated metrics across all processes |
-| `metrics-{pid}_{create_time}.csv` | Per-process time series metrics |
-| `command-{pid}_{create_time}.txt` | Linearized command line for each process |
-| `command-{pid}_{create_time}.json` | JSON representation of the command line |
-| `cpu_details.json` | Physical CPU information from `/proc/cpuinfo` |
-| `core_affinity.json` | Processor-to-core-to-CPU mapping derived from `/proc/cpuinfo` |
+| File                               | Description                                                    |
+| ---------------------------------- | -------------------------------------------------------------- |
+| `reference_pid.txt`                | PID of the root process being monitored                        |
+| `sampling-rate-seconds.txt`        | Sampling rate in seconds (usually 1)                           |
+| `pids.txt`                         | Table of all spawned processes with timestamps and parent PIDs |
+| `agg_metrics.tsv`                  | Time series of aggregated metrics across all processes         |
+| `metrics-{pid}_{create_time}.csv`  | Per-process time series metrics                                |
+| `command-{pid}_{create_time}.txt`  | Linearized command line for each process                       |
+| `command-{pid}_{create_time}.json` | JSON representation of the command line                        |
+| `cpu_details.json`                 | Physical CPU information from `/proc/cpuinfo`                  |
+| `core_affinity.json`               | Processor-to-core-to-CPU mapping derived from `/proc/cpuinfo`  |
 
 ### Per-process metrics (`metrics-{pid}_{create_time}.csv`)
 
-| Column | Description |
-|---|---|
-| `Time` | Sample timestamp |
-| `PID` | Process ID |
-| `Virt` | Virtual memory size (matches `top` VIRT) |
-| `Res` | Resident set size — non-swapped physical memory (matches `top` RES) |
-| `CPU` | CPU utilization as a percentage (can exceed 100% for multithreaded processes) |
-| `Memory` | RSS memory as a percentage of total physical system memory |
-| `TCP connections` | Number of open TCP connections |
-| `Thread Count` | Number of threads (non-cumulative) |
-| `User` | Time spent in user mode (seconds) |
-| `System` | Time spent in kernel mode (seconds) |
-| `Children_User` | User time of child processes (always 0 on Windows/macOS) |
-| `Children_System` | System time of child processes (always 0 on Windows/macOS) |
-| `IO` | Time waiting for blocking I/O (Linux only) |
-| `uss` | Unique Set Size — memory freed if this process terminated now |
-| `swap` | Memory swapped out to disk |
-| `processor_num` | Number of unique CPU processors used |
-| `core_num` | Number of unique CPU cores used |
-| `cpu_num` | Number of unique physical CPUs used |
-| `processor_ids` | IDs of CPU processors used (space-separated) |
-| `core_ids` | IDs of CPU cores used (space-separated) |
-| `cpu_ids` | IDs of physical CPUs used (space-separated) |
-| `process_status` | Process status string (e.g. `sleeping`, `running`) |
-| `read_count` | Cumulative number of read syscalls |
-| `write_count` | Cumulative number of write syscalls |
-| `read_bytes` | Bytes physically read from disk (cumulative) |
-| `write_bytes` | Bytes physically written to disk (cumulative) |
-| `read_chars` | Bytes passed to read syscalls (cumulative, Linux only) |
-| `write_chars` | Bytes passed to write syscalls (cumulative, Linux only) |
+| Column            | Description                                                                   |
+| ----------------- | ----------------------------------------------------------------------------- |
+| `Time`            | Sample timestamp                                                              |
+| `PID`             | Process ID                                                                    |
+| `Virt`            | Virtual memory size (matches `top` VIRT)                                      |
+| `Res`             | Resident set size — non-swapped physical memory (matches `top` RES)           |
+| `CPU`             | CPU utilization as a percentage (can exceed 100% for multithreaded processes) |
+| `Memory`          | RSS memory as a percentage of total physical system memory                    |
+| `TCP connections` | Number of open TCP connections                                                |
+| `Thread Count`    | Number of threads (non-cumulative)                                            |
+| `User`            | Time spent in user mode (seconds)                                             |
+| `System`          | Time spent in kernel mode (seconds)                                           |
+| `Children_User`   | User time of child processes (always 0 on Windows/macOS)                      |
+| `Children_System` | System time of child processes (always 0 on Windows/macOS)                    |
+| `IO`              | Time waiting for blocking I/O (Linux only)                                    |
+| `uss`             | Unique Set Size — memory freed if this process terminated now                 |
+| `swap`            | Memory swapped out to disk                                                    |
+| `processor_num`   | Number of unique CPU processors used                                          |
+| `core_num`        | Number of unique CPU cores used                                               |
+| `cpu_num`         | Number of unique physical CPUs used                                           |
+| `processor_ids`   | IDs of CPU processors used (space-separated)                                  |
+| `core_ids`        | IDs of CPU cores used (space-separated)                                       |
+| `cpu_ids`         | IDs of physical CPUs used (space-separated)                                   |
+| `process_status`  | Process status string (e.g. `sleeping`, `running`)                            |
+| `read_count`      | Cumulative number of read syscalls                                            |
+| `write_count`     | Cumulative number of write syscalls                                           |
+| `read_bytes`      | Bytes physically read from disk (cumulative)                                  |
+| `write_bytes`     | Bytes physically written to disk (cumulative)                                 |
+| `read_chars`      | Bytes passed to read syscalls (cumulative, Linux only)                        |
+| `write_chars`     | Bytes passed to write syscalls (cumulative, Linux only)                       |
 
 ### Aggregated metrics (`agg_metrics.tsv`)
 
 Each row is a 1-second sample across all monitored processes combined:
 
-| Column | Description |
-|---|---|
-| Timestamp | Sample time |
-| Number of PIDs | Processes monitored at that moment |
-| Threads | Total thread count |
-| Processors | Number of distinct CPU processors in use |
-| Cores | Number of distinct CPU cores in use |
-| Physical CPUs | Number of distinct physical CPUs in use |
-| CPU IDs | IDs of physical CPUs (space-separated) |
-| User memory | Total user memory across all processes |
-| Swap memory | Total swap memory across all processes |
-| Read ops | Total read operations |
-| Write ops | Total write operations |
-| Read bytes | Bytes physically read |
-| Write bytes | Bytes physically written |
-| Read chars | Bytes passed to read syscalls |
-| Write chars | Bytes passed to write syscalls |
+| Column         | Description                              |
+| -------------- | ---------------------------------------- |
+| Timestamp      | Sample time                              |
+| Number of PIDs | Processes monitored at that moment       |
+| Threads        | Total thread count                       |
+| Processors     | Number of distinct CPU processors in use |
+| Cores          | Number of distinct CPU cores in use      |
+| Physical CPUs  | Number of distinct physical CPUs in use  |
+| CPU IDs        | IDs of physical CPUs (space-separated)   |
+| User memory    | Total user memory across all processes   |
+| Swap memory    | Total swap memory across all processes   |
+| Read ops       | Total read operations                    |
+| Write ops      | Total write operations                   |
+| Read bytes     | Bytes physically read                    |
+| Write bytes    | Bytes physically written                 |
+| Read chars     | Bytes passed to read syscalls            |
+| Write chars    | Bytes passed to write syscalls           |
 
 ---
 
