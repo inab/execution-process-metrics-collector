@@ -96,7 +96,7 @@ jobs:
           regen_constraints=
           if [ -f "$constraints_file" ] ; then
             at="$(git --no-pager log -p -1 "--format=tformat:%at" --no-patch -- "$constraints_file")"
-            dat="$(git --no-pager log -p -1 "--format=tformat:%at" --no-patch -- "requirements.txt")"
+            dat="$(git --no-pager log -p -1 "--format=tformat:%at" --no-patch -- "installation/requirements.txt")"
             if [ "$at" -lt "$dat" ] ; then
               regen_constraints=true
             fi
@@ -104,12 +104,12 @@ jobs:
             regen_constraints=true
           fi
           if [ -n "$regen_constraints" ] ; then
-            pip install -r requirements.txt
+            pip install -r installation/requirements.txt
             pip freeze > "$constraints_file"
             grep -vF git+ "$constraints_file" > "$constraints_file"-relaxed
           else
             grep -vF git+ "$constraints_file" > "$constraints_file"-relaxed
-            pip install -r requirements.txt -c "$constraints_file"-relaxed
+            pip install -r installation/requirements.txt -c "$constraints_file"-relaxed
           fi
       - name: 'Install development requirements'
         shell: wsl-bash {0}
@@ -118,7 +118,7 @@ jobs:
           cd the_repo
           source .env/bin/activate
           
-          pip install -r dev-requirements.txt -r mypy-requirements.txt -c constraints-${{ matrix.python-version }}_${{ matrix.distribution }}-wsl.txt-relaxed
+          pip install -r installation/dev-requirements.txt -r installation/mypy-requirements.txt -c constraints-${{ matrix.python-version }}_${{ matrix.distribution }}-wsl.txt-relaxed
 #      - name: MyPy cache
 #        uses: actions/cache@v5
 #        with:
