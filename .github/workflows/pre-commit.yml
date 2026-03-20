@@ -6,7 +6,7 @@ on:
   push:
     branches: [exec]
     paths-ignore:
-      - 'constraints-*[0-9].txt'
+      - 'installation/constraints-*[0-9].txt'
 
 jobs:
   pre-commit:
@@ -31,7 +31,7 @@ jobs:
       - name: 'Install requirements (standard or constraints ${{ matrix.python-version }})'
         run: |
           pip install --upgrade pip wheel
-          constraints_file="constraints-${{ matrix.python-version }}.txt"
+          constraints_file="installation/constraints-${{ matrix.python-version }}.txt"
           regen_constraints=
           if [ -f "$constraints_file" ] ; then
             at="$(git --no-pager log -p -1 "--format=tformat:%at" --no-patch -- "$constraints_file")"
@@ -52,7 +52,7 @@ jobs:
           fi
       - name: 'Install development requirements'
         run: |
-          pip install -r installation/dev-requirements.txt -r installation/mypy-requirements.txt -c constraints-${{ matrix.python-version }}.txt-relaxed
+          pip install -r installation/dev-requirements.txt -r installation/mypy-requirements.txt -c installation/constraints-${{ matrix.python-version }}.txt-relaxed
       - name: MyPy cache
         uses: actions/cache@v5
         with:
@@ -98,12 +98,12 @@ jobs:
 #        continue-on-error: true
         uses: pilosus/action-pip-license-checker@v3.1.0
         with:
-          requirements: constraints-${{ matrix.python-version }}.txt
+          requirements: installation/constraints-${{ matrix.python-version }}.txt
 #      - name: Check transitive dependencies licences
 #        id: license_check_report
 #        uses: pilosus/action-pip-license-checker@v3.1.0
 #        with:
-#          requirements: constraints-${{ matrix.python-version }}.txt
+#          requirements: installation/constraints-${{ matrix.python-version }}.txt
 #          fail: 'StrongCopyleft'
 #          exclude: '(?i)^(pylint|dulwich|docutils).*'
       - name: Print licences report
@@ -113,7 +113,7 @@ jobs:
         with:
           name: pre-commit-${{ matrix.python-version }}
           retention-days: 2
-          path: constraints-${{ matrix.python-version }}.txt
+          path: installation/constraints-${{ matrix.python-version }}.txt
 
   pull_request_changes:
     # Do this only when it is not a pull request validation
@@ -138,13 +138,13 @@ jobs:
         run: |
           skip=true
           if [ -d "${{steps.download.outputs.download-path}}" ] ; then
-            for con in "${{steps.download.outputs.download-path}}"/constraints-*.txt ; do
+            for con in "${{steps.download.outputs.download-path}}"/installation/constraints-*.txt ; do
               case "$con" in
                 */constraints-\*.txt)
                   break
                   ;;
                 *)
-                  cp -p "$con" .
+                  cp -p "$con" installation
                   skip=false
                   ;;
               esac
@@ -158,7 +158,7 @@ jobs:
         with:
           title: Updated constraints (triggered on ${{ steps.timestamp.outputs.timestamp }} by ${{ github.sha }})
           branch: create-pull-request/patch-constraints
-          add-paths: constraints-*.txt
+          add-paths: installation/constraints-*.txt
           delete-branch: true
           commit-message: "[create-pull-request] Automatically commit updated contents (constraints)"
       - name: Check outputs

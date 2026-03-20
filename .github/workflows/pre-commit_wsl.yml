@@ -6,7 +6,7 @@ on:
   #push:
   #  branches: [exec]
   #  paths-ignore:
-  #    - 'constraints-*_*-wsl.txt'
+  #    - 'installation/constraints-*_*-wsl.txt'
 
 jobs:
   pre-commit:
@@ -92,7 +92,7 @@ jobs:
           source .env/bin/activate
           
           pip install --upgrade pip wheel
-          constraints_file="constraints-${{ matrix.python-version }}_${{ matrix.distribution }}-wsl.txt"
+          constraints_file="installation/constraints-${{ matrix.python-version }}_${{ matrix.distribution }}-wsl.txt"
           regen_constraints=
           if [ -f "$constraints_file" ] ; then
             at="$(git --no-pager log -p -1 "--format=tformat:%at" --no-patch -- "$constraints_file")"
@@ -118,7 +118,7 @@ jobs:
           cd the_repo
           source .env/bin/activate
           
-          pip install -r installation/dev-requirements.txt -r installation/mypy-requirements.txt -c constraints-${{ matrix.python-version }}_${{ matrix.distribution }}-wsl.txt-relaxed
+          pip install -r installation/dev-requirements.txt -r installation/mypy-requirements.txt -c installation/constraints-${{ matrix.python-version }}_${{ matrix.distribution }}-wsl.txt-relaxed
 #      - name: MyPy cache
 #        uses: actions/cache@v5
 #        with:
@@ -171,7 +171,7 @@ jobs:
         with:
           name: wsl_pre-commit-${{ matrix.python-version }}_${{ matrix.distribution }}
           retention-days: 2
-          path: the_repo/constraints-${{ matrix.python-version }}_${{ matrix.distribution }}-wsl.txt
+          path: the_repo/installation/constraints-${{ matrix.python-version }}_${{ matrix.distribution }}-wsl.txt
 
   check_licences:
     runs-on: ubuntu-latest
@@ -196,12 +196,12 @@ jobs:
 #        continue-on-error: true
         uses: pilosus/action-pip-license-checker@v3.1.0
         with:
-          requirements: constraints-${{ matrix.python-version }}_${{ matrix.distribution }}-wsl.txt
+          requirements: installation/constraints-${{ matrix.python-version }}_${{ matrix.distribution }}-wsl.txt
 #      - name: Check transitive dependencies licences
 #        id: license_check_report
 #        uses: pilosus/action-pip-license-checker@v3.1.0
 #        with:
-#          requirements: constraints-${{ matrix.python-version }}.txt
+#          requirements: installation/constraints-${{ matrix.python-version }}.txt
 #          fail: 'StrongCopyleft'
 #          exclude: '(?i)^(pylint|dulwich|docutils).*'
       - name: Print licences report
@@ -231,13 +231,13 @@ jobs:
         run: |
           skip=true
           if [ -d "${{steps.download.outputs.download-path}}" ] ; then
-            for con in "${{steps.download.outputs.download-path}}"/constraints-*_*-wsl.txt ; do
+            for con in "${{steps.download.outputs.download-path}}"/installation/constraints-*_*-wsl.txt ; do
               case "$con" in
                 */constraints-\*_\*-wsl.txt)
                   break
                   ;;
                 *)
-                  cp -p "$con" .
+                  cp -p "$con" installation
                   skip=false
                   ;;
               esac
@@ -251,7 +251,7 @@ jobs:
         with:
           title: Updated WSL constraints (triggered on ${{ steps.timestamp.outputs.timestamp }} by ${{ github.sha }})
           branch: create-pull-request/patch-wsl_constraints
-          add-paths: constraints-*_*-wsl.txt
+          add-paths: installation/constraints-*_*-wsl.txt
           delete-branch: true
           commit-message: "[create-pull-request] Automatically commit updated contents (constraints WSL)"
       - name: Check outputs
