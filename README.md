@@ -2,7 +2,7 @@
 
 > Originally named _Execution Process Metrics Collector_
 
-A set of Python programs to monitor, collect, and digest metrics of a given Linux process or command line, and its descendants. Initially developed for [ELIXIR STEERS](https://elixir-europe.org/internal-projects/commissioned-services/steers).
+A set of Python programs to monitor, collect, and digest metrics of a given Linux process or command line, and its descendants. Initially developed for [ELIXIR STEERS](https://elixir-europe.org/about-us/how-funded/eu-projects/steers).
 
 ---
 
