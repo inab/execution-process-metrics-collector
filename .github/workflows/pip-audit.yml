@@ -19,7 +19,7 @@ jobs:
           python-version: ${{ matrix.python-version }}
           cache: 'pip'
           cache-dependency-path: |
-            requirements.txt
+            installation/requirements.txt
           architecture: x64
       - name: 'Install requirements (standard or constraints ${{ matrix.python-version }})'
         run: |
@@ -48,7 +48,7 @@ jobs:
             python -mvenv /tmp/PIPFREEZE
             source /tmp/PIPFREEZE/bin/activate
             pip install --upgrade pip wheel
-            pip install -r requirements.txt
+            pip install -r installation/requirements.txt
             pip freeze > constraints-${{ matrix.python-version }}.txt
             
             # Re-audit the populated environment
