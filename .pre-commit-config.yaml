@@ -55,9 +55,11 @@ repos:
     hooks:
       # Run the formatter.
       - id: ruff-format
-        args: [--diff]
-      - id: ruff-format
+        name: ruff format (with changes)
         stages: [manual]
+      - id: ruff-format
+        name: ruff format (check)
+        args: [--diff]
   - repo: https://github.com/jmfernandez/pre-commit_mirrors-actionlint.git
     rev: v1.7.1
     hooks:
