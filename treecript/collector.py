@@ -21,7 +21,6 @@
 import atexit
 import copy
 import datetime
-import docker
 import json
 import logging
 import os
@@ -343,12 +342,23 @@ def process_metrics_collector(
         print("\t".join(agg_metrics_cols), file=cH)
 
     docker_cli = None
+    docker_errors_NotFound = BaseException
     if match_docker:
         try:
-            docker_cli = docker.from_env()
-        except docker.errors.DockerException:
+            import docker
+
+            try:
+                docker_cli = docker.from_env()
+
+            except docker.errors.DockerException:
+                logger.info(
+                    "Docker service not reachable. Processes spawned using docker will not be properly tracked"
+                )
+            finally:
+                docker_errors_NotFound = docker.errors.NotFound  # type: ignore[assignment]
+        except ModuleNotFoundError:
             logger.info(
-                "Docker service not reachable. Processes spawned using docker will not be properly tracked"
+                "Docker python feature not installed. Processes spawned using docker will not be properly tracked"
             )
 
     recorded_pids: "MutableMapping[int, psutil.Process]" = dict()
@@ -429,16 +439,19 @@ def process_metrics_collector(
                         container_data.sort(key=lambda c: c[1])
 
                     break
-                except docker.errors.NotFound:
-                    tries -= 1
-                    if tries == 0:
-                        logger.warning(
-                            "Failed getting the list of docker instances after 5 tries"
-                        )
+                except BaseException as be:
+                    if docker_errors_NotFound != BaseException and isinstance(  # noqa: E721
+                        be, docker_errors_NotFound
+                    ):  # noqa: E721
+                        tries -= 1
+                        if tries == 0:
+                            logger.warning(
+                                "Failed getting the list of docker instances after 5 tries"
+                            )
+                            break
+                    else:
+                        logger.warning("Failed to get the list of docker instances")
                         break
-                except BaseException:
-                    logger.warning("Failed to get the list of docker instances")
-                    break
 
         timestamp_str = datetime.datetime.now().strftime(timestamp_format)
 

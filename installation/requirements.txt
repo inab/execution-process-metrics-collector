@@ -1,6 +1,3 @@
-psutil
-docker
-pandas
-networkx
-matplotlib
-adjustText
+-r requirements-core.txt
+-r requirements-docker.txt
+-r requirements-analytics.txt

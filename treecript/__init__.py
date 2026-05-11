@@ -3,7 +3,7 @@
 
 # SPDX-License-Identifier: GPL-3.0-or-later
 # treecript, a process tree metrics gatherer.
-# Copyright (C) 2025 Barcelona Supercomputing Center, José M. Fernández
+# Copyright (C) 2026 Barcelona Supercomputing Center, José M. Fernández
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -23,4 +23,4 @@ __copyright__ = "© 2025 Barcelona Supercomputing Center (BSC), ES"
 __license__ = "GPL-3.0-or-later"
 
 # https://www.python.org/dev/peps/pep-0396/
-__version__ = "0.6.1"
+__version__ = "0.7.0"
