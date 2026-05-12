@@ -1,4 +1,4 @@
-name: Singularity Build (docker)
+name: Singularity Build (within a docker instance)
 on: 
   workflow_dispatch:
   push:
@@ -97,7 +97,7 @@ jobs:
         env:
           keepgoing: ${{ env.keepgoing }}
         run: |         
-            if [[ "${keepgoing}" == "true" ]]; then
+            if [ "${keepgoing}" = "true" ]; then
                 echo "${{ secrets.GITHUB_TOKEN }}" | singularity remote login -u "${{ secrets.GHCR_USERNAME }}" --password-stdin oras://ghcr.io
                 declare -a tags=( ${{ needs.gather-metadata.outputs.tags }} )
                 for tag in "${tags[@]}" ; do
