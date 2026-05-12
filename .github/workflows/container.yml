@@ -97,7 +97,7 @@ jobs:
         shell: /bin/bash {0}
         run: |         
           singularity registry login -u "${{ github.actor }}" -p "${{ secrets.GITHUB_TOKEN }}" oras://ghcr.io
-          declare -a tags=( ${{ needs.gather-metadata.outputs.tags }} )
+          declare -a tags=( ${{ needs.gather-metadata.outputs.tags }}  ${{ needs.gather-metadata.outputs.labels }} )
           for tag in "${tags[@]}" ; do
-            echo singularity push container.sif "oras://ghcr.io/${GITHUB_REPOSITORY}:${tag}"
+            echo singularity push container.sif "oras://ghcr.io/${GITHUB_REPOSITORY}${tag}"
           done
