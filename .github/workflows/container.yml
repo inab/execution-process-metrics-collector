@@ -94,6 +94,7 @@ jobs:
 
       - name: Login and Deploy Container
         if: (github.event_name != 'pull_request') && ( env.keepgoing == 'true' )
+        shell: /bin/bash {0}
         run: |         
           singularity registry login -u "${{ github.actor }}" -p "${{ secrets.GITHUB_TOKEN }}" oras://ghcr.io
           declare -a tags=( ${{ needs.gather-metadata.outputs.tags }} )
