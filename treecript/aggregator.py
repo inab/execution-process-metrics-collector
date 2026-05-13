@@ -100,9 +100,11 @@ def draw_tree(
         if group_by_process_name is not None:
             node_color = list(
                 map(
-                    lambda command: GROUPED_BY_COLOR
-                    if command.startswith(group_by_process_name)
-                    else OTHER_COLOR,
+                    lambda command: (
+                        GROUPED_BY_COLOR
+                        if command.startswith(group_by_process_name)
+                        else OTHER_COLOR
+                    ),
                     pids["command"],
                 )
             )
@@ -169,9 +171,11 @@ def draw_spiral(
         if group_by_process_name is not None:
             node_color = list(
                 map(
-                    lambda command: GROUPED_BY_COLOR
-                    if command.startswith(group_by_process_name)
-                    else OTHER_COLOR,
+                    lambda command: (
+                        GROUPED_BY_COLOR
+                        if command.startswith(group_by_process_name)
+                        else OTHER_COLOR
+                    ),
                     pids["command"],
                 )
             )

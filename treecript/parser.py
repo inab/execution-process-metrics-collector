@@ -169,9 +169,11 @@ def metrics_parser(
         lambda row: str(row.create_time) + "_" + str(row.PID), axis=1
     )
     pids["parent"] = pids.apply(
-        lambda row: str(row.ppid_create_time) + "_" + str(row.PPID)
-        if not pd.isna(row.PPID)
-        else pd.NA,
+        lambda row: (
+            str(row.ppid_create_time) + "_" + str(row.PPID)
+            if not pd.isna(row.PPID)
+            else pd.NA
+        ),
         axis=1,
     )
 

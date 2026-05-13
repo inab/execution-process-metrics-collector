@@ -36,9 +36,12 @@ if TYPE_CHECKING:
         Union,
     )
 
+    from .common import (
+        CPUInfo,
+    )
+
 from .common import (
     CPU_DETAILS_FILENAME,
-    CPUInfo,
     parse_cpuinfo,
 )
 
