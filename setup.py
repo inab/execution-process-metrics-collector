@@ -147,7 +147,7 @@ setuptools.setup(
         ],
     },
     install_requires=requirements,
-    extras_require=extra_requirements,
+    extras_require=extra_requirements,  # type: ignore[arg-type]
     # See https://pypi.org/classifiers/
     classifiers=[
         "Programming Language :: Python :: 3",
