@@ -139,9 +139,9 @@ setuptools.setup(
         "console_scripts": [
             "execution-metrics-collector = treecript.collector:main__commandline",
             "process-metrics-collector = treecript.collector:main",
-            "cpuinfo-tdp-finder = treecript.tdp_finder:main_cpuinfo_tdp_finder",
-            "modelname-tdp-finder = treecript.tdp_finder:main_modelname_tdp_finder",
-            "tdp-finder = treecript.tdp_finder:main_tdp_finder",
+            "cpuinfo-tdp-finder = treecript.tdp_finder:main_cpuinfo_tdp_finder [analytics]",
+            "modelname-tdp-finder = treecript.tdp_finder:main_modelname_tdp_finder [analytics]",
+            "tdp-finder = treecript.tdp_finder:main_tdp_finder [analytics]",
             "metrics-aggregator = treecript.aggregator:main [analytics]",
             "plotGraph = treecript.plot_graph:main [analytics]",
         ],
