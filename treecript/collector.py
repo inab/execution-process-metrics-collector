@@ -103,6 +103,7 @@ def analyse_list_of_processes(
                             "name",
                             "cmdline",
                             "cpu_times",
+                            "memory_info",
                             "memory_full_info",
                             "io_counters",
                             "net_connections",
@@ -120,8 +121,8 @@ def analyse_list_of_processes(
                     # The process suddenly disappeared
                     if (
                         child_d["cpu_times"] is not None
-                        and child_d["memory_full_info"] is not None
                         and child_d["cmdline"] is not None
+                        and child_d["memory_info"] is not None
                     ):
                         threads_processor_num: "Set[int]" = set()
                         threads_core_num: "Set[str]" = set()
@@ -530,7 +531,12 @@ def process_metrics_collector(
             )
 
             c_cpu = child_d["cpu_times"]
-            c_mem = c_full_mem = child_d["memory_full_info"]
+            c_full_mem = child_d["memory_full_info"]
+            c_mem = child_d["memory_info"]
+            if c_full_mem is None:
+                c_full_mem = c_mem
+            else:
+                c_mem = c_full_mem
             c_io = child_d["io_counters"]
             c_conn = child_d["net_connections"]
             # The process suddenly disappeared
