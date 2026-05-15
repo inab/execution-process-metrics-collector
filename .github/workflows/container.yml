@@ -37,12 +37,26 @@ jobs:
         uses: docker/metadata-action@v6.0.0
         with:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          tags: |
+            type=schedule
+            type=ref,event=branch
+            type=ref,event=tag
+            type=ref,event=pr
+            type=sha
+#            type=semver,pattern={{version}}
+#            type=semver,pattern={{major}}.{{minor}}
 
   build-test-containers:
     needs:
       - gather-metadata
     #  - changes
     runs-on: ubuntu-latest
+    # Sets the permissions granted to the `GITHUB_TOKEN` for the actions in this job.
+    permissions:
+      contents: read
+      packages: write
+      attestations: write
+      id-token: write
     strategy:
       # Keep going on other deployments if anything bloops
       fail-fast: false
@@ -97,7 +111,7 @@ jobs:
         shell: /bin/bash {0}
         run: |         
           singularity registry login -u "${{ github.actor }}" -p "${{ secrets.GITHUB_TOKEN }}" oras://ghcr.io
-          declare -a tags=( ${{ needs.gather-metadata.outputs.tags }}  ${{ needs.gather-metadata.outputs.labels }} )
+          declare -a tags=( ${{ needs.gather-metadata.outputs.tags }} )
           for tag in "${tags[@]}" ; do
             echo singularity push container.sif "oras://ghcr.io/${GITHUB_REPOSITORY}${tag}"
           done
