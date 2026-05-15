@@ -25,9 +25,9 @@ A set of Python programs to monitor, collect, and digest metrics of a given Linu
     - [Collecting metrics](#collecting-metrics)
     - [Plotting time series charts](#plotting-time-series-charts)
     - [Finding CPU TDP](#finding-cpu-tdp)
-      - [`tdp-finder.py` — from a metrics directory](#tdp-finderpy--from-a-metrics-directory)
-      - [`cpuinfo-tdp-finder.py` — from `/proc/cpuinfo`](#cpuinfo-tdp-finderpy--from-proccpuinfo)
-      - [`modelname-tdp-finder.py` — from a processor model string](#modelname-tdp-finderpy--from-a-processor-model-string)
+      - [`tdp-finder` — from a metrics directory](#tdp-finder--from-a-metrics-directory)
+      - [`cpuinfo-tdp-finder` — from `/proc/cpuinfo`](#cpuinfo-tdp-finder--from-proccpuinfo)
+      - [`modelname-tdp-finder` — from a processor model string](#modelname-tdp-finder--from-a-processor-model-string)
     - [Digesting metrics](#digesting-metrics)
   - [CPU Dataset Setup](#cpu-dataset-setup)
   - [Output Files Reference](#output-files-reference)
@@ -65,7 +65,7 @@ treecript/
 | `sample-series/`          | Real metrics collected from a WfExS workflow run, used throughout this README as examples                                                      |
 | `sample-charts/`          | Pre-generated chart outputs (SVG/PDF/PNG) from the sample series                                                                               |
 | `sample-work-to-measure/` | Ready-to-use scripts to download and run example workloads to measure                                                                          |
-| `sample_cpuinfo/`         | Example `/proc/cpuinfo` files (Intel and AMD) for testing `cpuinfo-tdp-finder.py` and `modelname-tdp-finder.py` without needing a real machine |
+| `sample_cpuinfo/`         | Example `/proc/cpuinfo` files (Intel and AMD) for testing `cpuinfo-tdp-finder` and `modelname-tdp-finder` without needing a real machine |
 | `onboarding/`             | Self-contained worked example: a full metrics collection, chart generation and aggregation walkthrough for new users                           |
 | `sample/`                 | Legacy single-process sample from 2018, predating the current process-tree approach                                                            |
 | `tests/`                  | Unit tests for the core collector module                                                                                                       |
@@ -74,7 +74,12 @@ treecript/
 
 ## Installation
 
-### Prerequisites
+### Prerequisites (singularity)
+
+- Linux OS
+- [Singularity](https://sylabs.io/docs/) or [Apptainer](https://apptainer.org/).
+
+### Prerequisites (native)
 
 - Linux OS (Ubuntu recommended)
 - Python 3.9 or newer
@@ -82,27 +87,25 @@ treecript/
 
 ### Not sure which installation method to use?
 
-| I want to...                                               | Use                                                            |
-| ---------------------------------------------------------- | -------------------------------------------------------------- |
-| Keep things simple and already have Python installed       | **Option 1 — pip + venv**                                      |
-| Already use conda or manage multiple projects/environments | **Option 2 — Conda**                                           |
-| Work on an HPC or shared cluster environment (e.g. BSC)    | **Option 2 — Conda**                                           |
-| Work on a machine with a corporate or university firewall  | Either — both have firewall notes in their respective sections |
+| I want to...                                                                   | Use                                                            |
+| ------------------------------------------------------------------------------ | -------------------------------------------------------------- |
+| Keep things simple, already have either Apptainer or Singularity installed and you only want to gather metrics  | **Option 1 — Singularity**                                     |
+| Keep things simple and already have Python installed                           | **Option 2 — pip + venv**                                      |
+| Already use conda or manage multiple projects/environments                     | **Option 3 — Conda**                                           |
+| Work on an HPC or shared cluster environment (e.g. BSC)                        | **Option 1 — Singularity** or **Option 3 — Conda**             |
+| Work on a machine with a corporate or university firewall                      | Either — both have firewall notes in their respective sections |
 
 ---
 
-### Choosing a constraints file
+### Choosing a constraints file (only needed for option 2 or option 3)
 
-The repository ships per-version constraints files under the `installation/` directory to ensure a working set of dependencies. Pick the one that matches your setup:
+The repository ships per-version constraints files under the `installation/` directory to ensure a working set of dependencies. Pick the one that matches your setup (including the Python version):
 
 | Situation                     | Constraints file to use                              |
 | ----------------------------- | ---------------------------------------------------- |
-| Native Linux, Python 3.9      | `installation/constraints-3.9.txt`                   |
-| Native Linux, Python 3.10     | `installation/constraints-3.10.txt`                  |
-| Native Linux, Python 3.11     | `installation/constraints-3.11.txt`                  |
-| Native Linux, Python 3.12     | `installation/constraints-3.12.txt`                  |
-| Ubuntu 22.04 on WSL (Windows) | `installation/constraints-3.10_Ubuntu-22.04-wsl.txt` |
-| Ubuntu 24.04 on WSL (Windows) | `installation/constraints-3.10_Ubuntu-24.04-wsl.txt` |
+| Native Linux, Python 3.x      | `installation/constraints-3.x.txt`                   |
+| Ubuntu 22.04 on WSL (Windows) | `installation/constraints-3.x_Ubuntu-22.04-wsl.txt` |
+| Ubuntu 24.04 on WSL (Windows) | `installation/constraints-3.x_Ubuntu-24.04-wsl.txt` |
 
 > **WSL** = Windows Subsystem for Linux — Ubuntu running inside Windows rather than directly on hardware. If you are running Ubuntu natively on your machine, use the plain constraints file. To check:
 >
@@ -118,7 +121,55 @@ python3 --version
 
 ---
 
-### Option 1: pip + virtual environment (venv)
+### Option 1: Singularity
+
+#### Alternative A: Fetch a pre-built image (only for metrics gathering)
+
+Pre-build singularity images are listed at https://github.com/inab/treecript/pkgs/container/treecript .
+
+They can be fetched using Apptainer/Singularity just using `singularity pull` subcommand:
+
+```bash
+# Replace exec by the tag of the version you want to use 
+singularity pull oras://ghcr.io/inab/treecript:exec
+
+# The name of the created file depends on the tag
+ls -l treecript-exec.sif
+```
+
+#### Alternative B: Building from source
+
+When no file is locally, but you already have either Apptainer or Singularity installed:
+
+```bash
+# TREECRIPT_VER can be either a branch, a tag or a commit hash
+TREECRIPT_VER=7c0a20a688518e43952d7bd7080bc34b863e32da
+
+# If you don't have the recipe, you can fetch it using either curl or wget
+mkdir -p treecript_SIF_build/installation
+cd treecript_SIF_build/installation
+curl -O https://raw.githubusercontent.com/inab/treecript/${TREECRIPT_VER}/installation/Singularity.def
+cd ..
+```
+
+If you have already checked out the code
+
+```bash
+# Alternatively, you can use a checked out copy
+cd treecript
+TREECRIPT_VER=$(git rev-parse HEAD)
+```
+
+At last, you can build the SIF image with next command:
+
+```
+singularity build --build-arg treecript_checkout="${TREECRIPT_VER}" \
+  treecript-${TREECRIPT_VER}.sif installation/Singularity.def 
+```
+
+---
+
+### Option 2: pip + virtual environment (venv)
 
 Use this if you already have Python installed on your system and don't use conda. This is the lightest option — it creates an isolated Python environment using only tools that come built into Python, with no additional software required.
 
@@ -136,7 +187,7 @@ pip install --upgrade pip wheel
 wget https://raw.githubusercontent.com/inab/treecript/exec/installation/constraints-3.10.txt
 
 # 5. Install treecript with constraints
-pip install -c constraints-3.10.txt git+https://github.com/inab/treecript.git@exec
+pip install -c constraints-3.10.txt 'treecript [analytics,docker] @ git+https://github.com/inab/treecript.git@exec'
 ```
 
 > **Network issues?** If you are behind a corporate or university firewall (e.g. Fortiguard), add `--no-check-certificate` to the `wget` command.
@@ -155,7 +206,7 @@ source TREECRIPT/bin/activate
 
 ---
 
-### Option 2: Conda environment
+### Option 3: Conda environment
 
 Use this if you already work with Anaconda or Miniconda, or if you prefer conda for managing environments across multiple projects. Conda handles both Python and system-level dependencies, which makes it particularly well suited for HPC or shared computing environments.
 
@@ -202,7 +253,7 @@ wget https://raw.githubusercontent.com/inab/treecript/exec/installation/constrai
 # wget https://raw.githubusercontent.com/inab/treecript/exec/installation/constraints-3.10_Ubuntu-22.04-wsl.txt
 
 # 4. Install treecript and all dependencies in one shot
-pip install -c constraints-3.10.txt git+https://github.com/inab/treecript.git@exec
+pip install -c constraints-3.10.txt 'treecript [analytics,docker] @ git+https://github.com/inab/treecript.git@exec'
 ```
 
 To deactivate:
@@ -238,20 +289,33 @@ import treecript; print('treecript OK')
 
 ---
 
-## Quick Start
+## Quick Start (Singularity/Apptainer)
+
+At the moment, it is limited to metrics gathering
+
+```bash
+# 1. Collect metrics for a command in background
+my_command --arg1 --arg2 &
+
+# bash puts the PID of the last background process in $! variable
+# This way is needed because the 
+singularity exec treecript-exec.sif process-metrics-collector $! ~/my_metrics
+```
+
+## Quick Start (other options)
 
 ```bash
 # 1. Collect metrics for a command
-execution-metrics-collector.py ~/my_metrics my_command --arg1 --arg2
+execution-metrics-collector ~/my_metrics my_command --arg1 --arg2
 
 # 2. Plot time series charts
-plotGraph.py ~/my_metrics/2025_01_01-00_00-12345/ ~/my_charts/
+plotGraph ~/my_metrics/2025_01_01-00_00-12345/ ~/my_charts/
 
 # 3. Find your CPU's TDP
-tdp-finder.py ~/my_metrics/2025_01_01-00_00-12345/ cpu-spec-dataset_Josua/dataset/*.csv
+tdp-finder ~/my_metrics/2025_01_01-00_00-12345/ cpu-spec-dataset_Josua/dataset/*.csv
 
 # 4. Aggregate and estimate energy consumption
-metrics-aggregator.py ~/my_metrics/2025_01_01-00_00-12345/ ~/my_agg/ 28.0
+metrics-aggregator ~/my_metrics/2025_01_01-00_00-12345/ ~/my_agg/ 28.0
 ```
 
 ---
@@ -260,38 +324,38 @@ metrics-aggregator.py ~/my_metrics/2025_01_01-00_00-12345/ ~/my_agg/ 28.0
 
 ### Collecting metrics
 
-`execution-metrics-collector.py` runs a command and monitors it and all its child processes:
+`execution-metrics-collector` runs a command and monitors it and all its child processes:
 
 ```bash
-execution-metrics-collector.py {base_metrics_directory} {command} {args...}
+execution-metrics-collector {base_metrics_directory} {command} {args...}
 ```
 
-Internally this launches the command, captures its PID, and calls `process-metrics-collector.py` with a sampling period of 1 second:
+Internally this launches the command, captures its PID, and calls `process-metrics-collector` with a sampling period of 1 second:
 
 ```bash
-process-metrics-collector.py {pid} {base_metrics_directory} {sample_period}
+process-metrics-collector {pid} {base_metrics_directory} [sample_period]
 ```
 
 Example:
 
 ```bash
-execution-metrics-collector.py ~/metrics python myscript.py --input data.txt
+execution-metrics-collector ~/metrics python myscript.py --input data.txt
 ```
 
 ---
 
 ### Plotting time series charts
 
-`plotGraph.py` generates line charts for each monitored process, comparing time series of CPU, memory, I/O and other metrics:
+`plotGraph` generates line charts for each monitored process, comparing time series of CPU, memory, I/O and other metrics:
 
 ```bash
-plotGraph.py {metrics_directory} {output_directory}
+plotGraph {metrics_directory} {output_directory}
 ```
 
 Example:
 
 ```bash
-plotGraph.py ~/metrics/2025_01_01-00_00-12345/ ~/charts/
+plotGraph ~/metrics/2025_01_01-00_00-12345/ ~/charts/
 ```
 
 ---
@@ -300,54 +364,54 @@ plotGraph.py ~/metrics/2025_01_01-00_00-12345/ ~/charts/
 
 Three programs are available depending on what information you have:
 
-#### `tdp-finder.py` — from a metrics directory
+#### `tdp-finder` — from a metrics directory
 
 ```bash
-tdp-finder.py {metrics_directory} {csv_files...}
+tdp-finder {metrics_directory} {csv_files...}
 ```
 
 Example:
 
 ```bash
-tdp-finder.py ~/metrics/2025_01_01-00_00-12345/ cpu-spec-dataset_Josua/dataset/*.csv cpumark_table.csv
+tdp-finder ~/metrics/2025_01_01-00_00-12345/ cpu-spec-dataset_Josua/dataset/*.csv cpumark_table.csv
 ```
 
 Use `-q` for quiet mode (outputs only the TDP value, useful for scripting):
 
 ```bash
-tdp-finder.py -q ~/metrics/2025_01_01-00_00-12345/ cpu-spec-dataset_Josua/dataset/*.csv
+tdp-finder -q ~/metrics/2025_01_01-00_00-12345/ cpu-spec-dataset_Josua/dataset/*.csv
 # Output: 28.0
 ```
 
-#### `cpuinfo-tdp-finder.py` — from `/proc/cpuinfo`
+#### `cpuinfo-tdp-finder` — from `/proc/cpuinfo`
 
 Does not require a metrics directory:
 
 ```bash
-cpuinfo-tdp-finder.py /proc/cpuinfo cpu-spec-dataset_Josua/dataset/*.csv cpumark_table.csv
+cpuinfo-tdp-finder /proc/cpuinfo cpu-spec-dataset_Josua/dataset/*.csv cpumark_table.csv
 ```
 
 Or from a saved copy of `/proc/cpuinfo` — the `sample_cpuinfo/` directory contains example files for Intel and AMD processors you can use for testing:
 
 ```bash
-cpuinfo-tdp-finder.py sample_cpuinfo/cpuinfo-amd.txt cpu-spec-dataset_Josua/dataset/*.csv
+cpuinfo-tdp-finder sample_cpuinfo/cpuinfo-amd.txt cpu-spec-dataset_Josua/dataset/*.csv
 ```
 
-#### `modelname-tdp-finder.py` — from a processor model string
+#### `modelname-tdp-finder` — from a processor model string
 
 ```bash
-modelname-tdp-finder.py "11th Gen Intel(R) Core(TM) i7-1185G7 @ 3.00GHz" cpu-spec-dataset_Josua/dataset/*.csv
-modelname-tdp-finder.py "AMD EPYC 7742 64-Core Processor" cpu-spec-dataset_Josua/dataset/*.csv cpumark_table.csv
+modelname-tdp-finder "11th Gen Intel(R) Core(TM) i7-1185G7 @ 3.00GHz" cpu-spec-dataset_Josua/dataset/*.csv
+modelname-tdp-finder "AMD EPYC 7742 64-Core Processor" cpu-spec-dataset_Josua/dataset/*.csv cpumark_table.csv
 ```
 
 ---
 
 ### Digesting metrics
 
-`metrics-aggregator.py` digests the collected time series and estimates energy consumption per process subtree. It requires the CPU TDP value in Watts.
+`metrics-aggregator` digests the collected time series and estimates energy consumption per process subtree. It requires the CPU TDP value in Watts.
 
 ```bash
-metrics-aggregator.py {metrics_directory} {output_directory} {TDP_watts} [command_filter]
+metrics-aggregator {metrics_directory} {output_directory} {TDP_watts} [command_filter]
 ```
 
 The optional `command_filter` argument filters results to show only processes whose command matches the string (e.g. `"docker run"` to focus on Docker steps).
@@ -355,7 +419,7 @@ The optional `command_filter` argument filters results to show only processes wh
 Example using the included sample series:
 
 ```bash
-metrics-aggregator.py sample-series/Wetlab2Variations_metrics/2025_05_20-02_19-14001/ dest_directory 28.0 "docker run"
+metrics-aggregator sample-series/Wetlab2Variations_metrics/2025_05_20-02_19-14001/ dest_directory 28.0 "docker run"
 ```
 
 The output directory will contain:
@@ -398,14 +462,14 @@ python -m treecript.tdp_sources cpumark_table.csv
 You can pass multiple sources to the TDP programs and they will be tried in order:
 
 ```bash
-tdp-finder.py ~/metrics/dir/ cpu-spec-dataset_Josua/dataset/*.csv cpumark_table.csv
+tdp-finder ~/metrics/dir/ cpu-spec-dataset_Josua/dataset/*.csv cpumark_table.csv
 ```
 
 ---
 
 ## Output Files Reference
 
-Each `execution-metrics-collector.py` run creates a subdirectory named after the start timestamp and PID. It contains:
+Each `execution-metrics-collector` run creates a subdirectory named after the start timestamp and PID. It contains:
 
 | File                               | Description                                                    |
 | ---------------------------------- | -------------------------------------------------------------- |
@@ -482,13 +546,13 @@ The `legacy/` directory contains older Bash-based scripts that predate the curre
 
 ### `execution-metrics-collector.sh`
 
-The original Bash wrapper for launching a command and monitoring it. It runs the command in the background, captures the PID, and calls `process-metrics-collector.py` directly:
+The original Bash wrapper for launching a command and monitoring it. It runs the command in the background, captures the PID, and calls `process-metrics-collector` directly:
 
 ```bash
 ./legacy/execution-metrics-collector.sh {base_metrics_directory} {command} {args...}
 ```
 
-This has been superseded by `execution-metrics-collector.py`, which provides the same functionality in a more portable and maintainable way. The sample series included in this repository was originally collected using this script:
+This has been superseded by `execution-metrics-collector`, which provides the same functionality in a more portable and maintainable way. The sample series included in this repository was originally collected using this script:
 
 ```bash
 ~/projects/treecript/legacy/execution-metrics-collector.sh \
@@ -499,7 +563,7 @@ This has been superseded by `execution-metrics-collector.py`, which provides the
 
 ### `plotGraph.sh`
 
-The original gnuplot-based visualization script. It reads the collected CSV files and generates `.pdf` charts using `gnuplot` (requires `apt install gnuplot`). It has been superseded by `plotGraph.py`, which generates richer charts without requiring gnuplot.
+The original gnuplot-based visualization script. It reads the collected CSV files and generates `.pdf` charts using `gnuplot` (requires `apt install gnuplot`). It has been superseded by `plotGraph`, which generates richer charts without requiring gnuplot.
 
 ```bash
 ./legacy/plotGraph.sh {metrics_csv_files...}
@@ -507,7 +571,7 @@ The original gnuplot-based visualization script. It reads the collected CSV file
 
 ### `plot-metrics.sh`
 
-An earlier helper script for plotting individual metric files. Also superseded by `plotGraph.py`.
+An earlier helper script for plotting individual metric files. Also superseded by `plotGraph`.
 
 > These scripts are no longer actively maintained. For all new usage, prefer the Python equivalents.
 
