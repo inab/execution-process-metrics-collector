@@ -236,9 +236,8 @@ def plot_graphs(
     outputs_dir: "pathlib.Path",
     group_by_process_name: "Optional[str]" = None,
 ) -> "None":
-    pids, num_cpu_cores, sampling_period_seconds = metrics_parser(
+    reference_pid, pids, num_cpu_cores, sampling_period_seconds = metrics_parser(
         series_dir,
-        outputs_dir,
         group_by_process_name=group_by_process_name,
     )
 

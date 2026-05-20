@@ -2,6 +2,7 @@ ruff
 pre-commit
 build
 twine
+roc-validator
 mypy >= 1.1.1
 -r mypy-requirements.txt
 pytest

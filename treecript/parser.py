@@ -112,9 +112,8 @@ def process_command(command: "Sequence[str]") -> "str":
 
 def metrics_parser(
     series_dir: "pathlib.Path",
-    outputs_dir: "pathlib.Path",
     group_by_process_name: "Optional[str]" = None,
-) -> "Tuple[pd.DataFrame, int, float]":
+) -> "Tuple[float, pd.DataFrame, int, float]":
     if not series_dir.is_dir():
         logger.error(f"Path {series_dir.as_posix()} is not a directory")
         raise Exception()
@@ -216,7 +215,7 @@ def metrics_parser(
     pids["full_stats"] = pd.array(full_stats, dtype="object", copy=False)
     pids["subtree_root"] = subtree_root
 
-    return pids, num_cpu_cores, sampling_period_seconds
+    return reference_pid, pids, num_cpu_cores, sampling_period_seconds
 
 
 def timedelta_full_formatter(td: "pd.Timedelta") -> "str":
