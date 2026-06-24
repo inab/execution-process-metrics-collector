@@ -23,7 +23,10 @@ import datetime
 import logging
 import pathlib
 
-from typing import TYPE_CHECKING
+from typing import (
+    cast,
+    TYPE_CHECKING,
+)
 
 if TYPE_CHECKING:
     from typing import (
@@ -36,6 +39,8 @@ if TYPE_CHECKING:
     )
     
     import pandas.core.series
+
+from pandas import isna as pandas_isna
 
 import rocrate.model.creativework
 import rocrate.model.contextentity
@@ -267,6 +272,64 @@ def activate_action(wrroc: "rocrate.rocrate.ROCrate", pid_row: "pandas.core.seri
     
     pid_metric = create_property_value(wrroc, "PID", pid_row.PID)
     action.append_to("resourceUsage", pid_metric, compact=True)
+    
+    organize_action = rocrate.model.contextentity.ContextEntity(
+        wrroc,
+        "#" + pid_row.node + "_organize",
+        properties={
+            "@type": "OrganizeAction",
+            "name": "Run of " + " ".join(pid_row.full_command),
+            "startTime": start_action,
+        },
+    )
+    
+    wrroc.add(organize_action)
+    organize_action.append_to("result", action, compact=True)
+
+    assert len(pid_row.full_command) > 0
+    software_application = rocrate.model.contextentity.ContextEntity(
+        wrroc,
+        "#" + pid_row.node + "_software_application",
+        properties={
+            "@type": "SoftwareApplication",
+            "name": pid_row.full_command[0],
+        },
+    )
+    wrroc.add(software_application)
+    organize_action.append_to("instrument", software_application, compact=True)
+    action.append_to("instrument", software_application, compact=True)
+    
+    # Try registering this control action with its parent (if exists)
+    control_action = rocrate.model.contextentity.ContextEntity(
+        wrroc,
+        "#" + pid_row.node + "_control_action",
+        properties={
+            "@type": "ControlAction",
+            "name": "Orchestrate " + " ".join(pid_row.full_command),
+        },
+    )
+    wrroc.add(control_action)
+    control_action.append_to("object", action, compact=True)
+
+    howto_step = rocrate.model.contextentity.ContextEntity(
+        wrroc,
+        "#" + pid_row.node + "_howto_step",
+        properties={
+            "@type": "HowToStep",
+        },
+    )
+    wrroc.add(howto_step)
+    howto_step.append_to("workExample", software_application, compact=True)
+    control_action.append_to("instrument", howto_step, compact=True)
+
+
+    if not pandas_isna(pid_row.parent):
+        parent_organize_action = cast(
+            "Optional[rocrate.model.contextentity.ContextEntity]",
+            wrroc.dereference("#" + pid_row.parent + "_organize")
+        )
+        if parent_organize_action is not None:
+            parent_organize_action.append_to("object", control_action, compact=True)
     
     action_series = rocrate.model.contextentity.ContextEntity(
         wrroc,
