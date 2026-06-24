@@ -46,6 +46,16 @@ Event`"]
     H -->|workExample| S
 ```
 
+* Each process execution is described by an ActivateAction entity (WRROC uses CreateAction).
+* An OrganizeAction entity points to both the ActivateAction and the SoftwareApplication describing the execution itself.
+* Subprocesses are described through ControlAction entities, which point to the ActivateAction entity from the child process.
+* The OrganizeAction entity of the parent process points to each one of the ControlAction entities of the children processes.
+* Also, each ControlAction entity points to a HowToStep entity, which points to the very same SoftwareApplication entity used for the related ActivateAction and OrganizeAction entities.
+* The ActivateAction points through subjectOf to an EventSeries entity, which points to as many InstantatenousEvent entities as samples were gathered through the execution for that process.
+* Each InstantatenousEvent points to each one of the gathered metrics values (along with their semantic definition) , and it identifies when the metrics values were gathered.
+
+
+
 The description of the metrics using [PropertyValue](https://schema.org/PropertyValue) uses next ontological terms and units:
 
 ```json
