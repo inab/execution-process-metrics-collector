@@ -18,7 +18,7 @@ A set of Python programs to monitor, collect, and digest metrics of a given Linu
     - [Prerequisites (singularity)](#prerequisites-singularity)
     - [Prerequisites (native)](#prerequisites-native)
     - [Not sure which installation method to use?](#not-sure-which-installation-method-to-use)
-    - [Choosing a constraints file (only needed for option 2 or option 3)](#choosing-a-constraints-file-only-needed-for-option-2-or-option-3)
+    - [Choosing a constraints file (only needed for option 2, option 3 or option 4)](#choosing-a-constraints-file-only-needed-for-option-2-option-3-or-option-4)
     - [Option 1: Singularity](#option-1-singularity)
       - [Alternative A: Fetch a pre-built image (only for metrics gathering)](#alternative-a-fetch-a-pre-built-image-only-for-metrics-gathering)
       - [Alternative B: Building from source](#alternative-b-building-from-source)
@@ -26,6 +26,14 @@ A set of Python programs to monitor, collect, and digest metrics of a given Linu
     - [Option 3: Conda environment](#option-3-conda-environment)
       - [Installing Miniconda (if not already installed)](#installing-miniconda-if-not-already-installed)
       - [Creating the treecript conda environment](#creating-the-treecript-conda-environment)
+    - [Option 4: Standalone binary (PyInstaller)](#option-4-standalone-binary-pyinstaller)
+      - [Alternative A: Use a pre-built binary](#alternative-a-use-a-pre-built-binary)
+      - [Alternative B: Building it yourself](#alternative-b-building-it-yourself)
+        - [Why a container is needed](#why-a-container-is-needed)
+        - [Building the binary](#building-the-binary)
+        - [Checking glibc compatibility before deploying](#checking-glibc-compatibility-before-deploying)
+        - [Troubleshooting](#troubleshooting)
+      - [Full workflow example: HPC metrics collection + local analysis](#full-workflow-example-hpc-metrics-collection--local-analysis)
     - [Verifying the installation](#verifying-the-installation)
   - [Quick Start (Singularity/Apptainer)](#quick-start-singularityapptainer)
   - [Quick Start (other options)](#quick-start-other-options)
@@ -102,11 +110,12 @@ treecript/
 | Keep things simple and already have Python installed                           | **Option 2 — pip + venv**                                      |
 | Already use conda or manage multiple projects/environments                     | **Option 3 — Conda**                                           |
 | Work on an HPC or shared cluster environment (e.g. BSC)                        | **Option 1 — Singularity** or **Option 3 — Conda**             |
+| Deploy a single, dependency-free executable to a machine where you can't install Python, pip, or containers directly (e.g. copying onto compute nodes) | **Option 4 — Standalone binary (PyInstaller)** |
 | Work on a machine with a corporate or university firewall                      | Either — both have firewall notes in their respective sections |
 
 ---
 
-### Choosing a constraints file (only needed for option 2 or option 3)
+### Choosing a constraints file (only needed for option 2, option 3 or option 4)
 
 The repository ships per-version constraints files under the `installation/` directory to ensure a working set of dependencies. Pick the one that matches your setup (including the Python version):
 
@@ -280,9 +289,252 @@ conda remove -n treecript --all -y
 
 ---
 
+### Option 4: Standalone binary (PyInstaller)
+
+Use this if you need to run `execution-metrics-collector` on a machine where you cannot install Python, pip, or a container runtime — for example, a compute node on an HPC cluster that only allows copying pre-built files. [PyInstaller](https://pypi.org/project/pyinstaller/) bundles the Python interpreter, treecript, and all its dependencies into a single, dependency-free executable.
+
+#### Alternative A: Use a pre-built binary
+
+A pre-built, ready-to-use binary of `execution-metrics-collector` is published under this repository's [Packages](https://github.com/inab/treecript/pkgs/container/treecript) — the same place the Singularity images live (see [Option 1](#option-1-singularity)). You can find it directly at [`ghcr.io/inab/treecript:exec-binary-linux-x86_64`](https://github.com/inab/treecript/pkgs/container/treecript).
+
+**What it is:** a monolithic, single-file executable (built with PyInstaller inside a `manylinux_2_28` container, see [Alternative B](#alternative-b-building-it-yourself) below) that bundles the Python interpreter, treecript, and all its dependencies. It requires **glibc >= 2.28** on the target machine and nothing else — no Python, no pip, no virtual environment, no container runtime.
+
+Binaries are pushed and pulled as [OCI artifacts](https://oras.land/) using [`oras`](https://oras.land/docs/installation), the same underlying tool `singularity pull oras://...` uses for the container images above.
+
+**Downloading it:**
+
+```bash
+# Install oras once, if you don't have it: https://oras.land/docs/installation
+# Replace the tag with the version you want (mirrors the treecript git ref/tag)
+oras pull ghcr.io/inab/treecript:exec-binary-linux-x86_64
+
+chmod +x execution-metrics-collector
+./execution-metrics-collector
+```
+
+**Using it on an HPC cluster:** since the binary has no dependencies, it can be pulled and run directly on the login node, or inside an interactive Slurm allocation:
+
+```bash
+# Option A: pull and run directly on the login node
+oras pull ghcr.io/inab/treecript:exec-binary-linux-x86_64
+chmod +x execution-metrics-collector
+./execution-metrics-collector ~/my_metrics my_command --arg1 --arg2
+
+# Option B: interactive job via Slurm (salloc) — recommended for anything
+# that needs dedicated compute resources rather than sharing the login node
+salloc -n 1 -c 4 -t 00:30:00   # adjust cores/time/partition to your cluster
+# once the allocation starts and you're placed on a compute node:
+./execution-metrics-collector ~/my_metrics my_command --arg1 --arg2
+exit   # ends the salloc session when done
+```
+
+Before relying on this binary on a new target machine, double-check glibc compatibility — see [Checking glibc compatibility before deploying](#checking-glibc-compatibility-before-deploying) below. Since it was built against `manylinux_2_28` (glibc 2.28), it will run on any machine with glibc 2.28 or newer, but **not** on an older one:
+
+```bash
+ldd --version | head -1   # on the target machine; must report glibc >= 2.28
+```
+
+If your target machine has an older glibc, or a different CPU architecture, this pre-built binary won't work for you — build your own following [Alternative B](#alternative-b-building-it-yourself) below.
+
+**Publishing a new version (maintainers):**
+
+```bash
+# 1. Log in to GitHub Container Registry (needs a PAT with write:packages scope)
+echo "$GITHUB_TOKEN" | oras login ghcr.io -u your-github-username --password-stdin
+
+# 2. Build the binary (see "Building the binary" below), then push it as an
+#    OCI artifact — no Dockerfile/container involved, just the raw file
+oras push ghcr.io/inab/treecript:exec-binary-linux-x86_64 \
+  dist/execution-metrics-collector:application/octet-stream
+
+# 3. Confirm it shows up under the repository's Packages tab
+```
+
+Use a version tag that reflects what the binary actually is (e.g. `exec-binary-linux-x86_64`, or include the treecript ref/commit if you publish multiple versions), so users can tell binaries apart without downloading each one.
+
+#### Alternative B: Building it yourself
+
+##### Why a container is needed
+
+The binary must be built on a machine whose **glibc version is equal to or older than** the target machine's glibc, because glibc is forward-compatible but not backward-compatible: a binary built against a newer glibc will refuse to run on a system with an older one, failing with an error such as:
+
+```
+/lib64/libc.so.6: version `GLIBC_2.35' not found (required by execution-metrics-collector)
+```
+
+Development laptops typically run a fairly recent Linux distribution (e.g. Ubuntu 22.04, glibc 2.35), while HPC login/compute nodes often run older, more conservative distributions (e.g. glibc 2.28–2.34). Building directly on the laptop would therefore very likely produce a binary that cannot run on the cluster.
+
+The safe approach is to build inside a [`manylinux`](https://github.com/pypa/manylinux) container, which ships a deliberately old glibc chosen to be compatible with virtually any modern Linux target:
+
+```bash
+# Check your target machine's glibc version:
+ssh your-user@your-hpc-login-node "ldd --version | head -1"
+
+# Check your build machine's glibc version:
+ldd --version | head -1
+```
+
+If the target's glibc is **older** than your laptop's, build inside a `manylinux_2_28` (or older, e.g. `manylinux2014`) container instead of building natively.
+
+> **Note:** the Python interpreters preinstalled inside `manylinux` images (under `/opt/python/cpXXX-cpXXX`) are built **without** a shared `libpython` — they are meant for compiling wheels, not for running applications. PyInstaller requires a shared `libpythonX.Y.so`, so the container build compiles its own Python from source with `--enable-shared`. It also needs `openssl-devel` (and other `-devel` headers) installed **before** compiling Python, otherwise Python's `ssl` module is silently skipped and `pip` cannot reach PyPI.
+
+##### Building the binary
+
+Save the following as `Dockerfile` in a directory that also contains your chosen `installation/constraints-3.x.txt` file:
+
+```dockerfile
+FROM quay.io/pypa/manylinux_2_28_x86_64
+
+ARG PYVER=3.13.9
+ARG TREECRIPT_GIT_URL=https://github.com/inab/treecript.git
+ARG TREECRIPT_REF=exec
+
+ENV PYSHARED_PREFIX=/opt/python-shared
+ENV LD_LIBRARY_PATH=${PYSHARED_PREFIX}/lib
+
+# Build-time dependencies for compiling Python (openssl-devel is required,
+# otherwise Python ends up without the ssl module and pip cannot reach PyPI)
+RUN dnf install -y \
+        openssl-devel bzip2-devel libffi-devel zlib-devel xz-devel \
+        ncurses-devel readline-devel sqlite-devel tk-devel gdbm-devel \
+    && dnf clean all
+
+# Compile Python with --enable-shared, required by PyInstaller
+RUN curl -O https://www.python.org/ftp/python/${PYVER}/Python-${PYVER}.tgz \
+    && tar xzf Python-${PYVER}.tgz \
+    && cd Python-${PYVER} \
+    && ./configure --enable-shared --prefix=${PYSHARED_PREFIX} --with-openssl=/usr \
+    && make -j"$(nproc)" \
+    && make altinstall \
+    && cd .. && rm -rf Python-${PYVER} Python-${PYVER}.tgz
+
+ENV PYBIN=${PYSHARED_PREFIX}/bin/python3.13
+WORKDIR /src
+
+RUN ${PYBIN} -m venv /opt/venv
+ENV PATH=/opt/venv/bin:$PATH
+
+COPY constraints-3.12.txt /src/constraints-3.12.txt
+
+RUN /opt/venv/bin/pip install --upgrade pip wheel \
+    && /opt/venv/bin/pip install -c /src/constraints-3.12.txt \
+       "treecript[analytics,docker] @ git+${TREECRIPT_GIT_URL}@${TREECRIPT_REF}" \
+    && /opt/venv/bin/pip install pyinstaller
+
+CMD ["/opt/venv/bin/pyinstaller", "-F", "-n", "execution-metrics-collector", \
+     "/opt/venv/bin/execution-metrics-collector"]
+```
+
+Build the image once (this recompiles Python from source, so it takes several minutes the first time; subsequent builds reuse the cached layer as long as `PYVER` doesn't change):
+
+```bash
+docker build -t treecript-builder \
+  --build-arg TREECRIPT_GIT_URL=https://github.com/inab/treecript.git \
+  --build-arg TREECRIPT_REF=exec \
+  -f Dockerfile .
+```
+
+Then generate the binary itself (fast — reuses the already-built image):
+
+```bash
+docker run --rm -v "$PWD/dist:/src/dist" treecript-builder
+```
+
+The resulting `dist/execution-metrics-collector` is a single, self-contained executable (`--onefile` / `-F` build).
+
+> **Why only `execution-metrics-collector`?** The whole point of this standalone binary is to run metrics *collection* on a machine with no Python available — typically an HPC compute node. The other treecript programs (`plotGraph`, `tdp-finder`, `metrics-aggregator`) are analysis tools meant to run afterwards on a regular machine (your laptop, a login node with Python, etc.), where a normal [Option 2](#option-2-pip--virtual-environment-venv) or [Option 3](#option-3-conda-environment) install is simpler and works just as well — see the [full workflow example](#full-workflow-example-hpc-metrics-collection--local-analysis) below. It's technically possible to build any of them the same way (just point `pyinstaller` at a different entry point, e.g. `/opt/venv/bin/plotGraph` instead of `/opt/venv/bin/execution-metrics-collector`).
+
+##### Checking glibc compatibility before deploying
+
+Before copying the binary anywhere, confirm the minimum glibc version it actually requires:
+
+```bash
+objdump -T dist/execution-metrics-collector | grep GLIBC_ \
+  | sed 's/.*GLIBC_\([0-9.]*\).*/\1/' | sort -V | tail -1
+```
+
+This should print a version at or below the target machine's `ldd --version`.
+
+##### Troubleshooting
+
+| Symptom | Cause | Fix |
+| --- | --- | --- |
+| `version 'GLIBC_2.XX' not found` when running the binary | Built on a machine/container with newer glibc than the target | Rebuild inside an older `manylinux` base image (e.g. `manylinux2014` instead of `manylinux_2_28`) |
+| `Python was built without a shared library` during `pyinstaller` build | Using the manylinux-provided Python instead of a `--enable-shared` build | Compile Python from source with `--enable-shared`, as shown above |
+| `SSL module is not available` / pip cannot reach PyPI while building the image | `openssl-devel` (and related `-devel` headers) missing before compiling Python | Install `openssl-devel` (and the other `-devel` packages listed above) before the `./configure && make` step |
+| Files generated by `docker run` (`dist/`, `build/`, `*.spec`) cannot be deleted from the host | The container runs as `root`, so generated files are root-owned | `sudo rm -rf build dist *.spec`, or delete them from inside another container run as root, or add `--user "$(id -u):$(id -g)"` to `docker run` to avoid the issue going forward |
+
+#### Full workflow example: HPC metrics collection + local analysis
+
+This walks through a complete, real scenario: building a monolithic binary on a laptop, using it to collect metrics on an HPC cluster where no Python environment is available, and then bringing those metrics back to the laptop for plotting, TDP lookup, and energy aggregation — all done locally, since only metrics collection strictly requires running on the HPC node itself.
+
+```bash
+# ── 1. On the laptop: build the binary (see Alternative B above) ──────────
+docker build -t treecript-builder -f Dockerfile .
+docker run --rm -v "$PWD/dist:/src/dist" treecript-builder
+
+# Confirm the glibc floor is compatible with the target cluster
+objdump -T dist/execution-metrics-collector | grep GLIBC_ \
+  | sed 's/.*GLIBC_\([0-9.]*\).*/\1/' | sort -V | tail -1
+
+# ── 2. Copy the binary to the HPC login/compute node ───────────────────────
+scp dist/execution-metrics-collector your-user@your-hpc-login-node:~/
+
+# ── 3. On the HPC node: collect metrics for the workload you care about ────
+ssh your-user@your-hpc-login-node
+chmod +x execution-metrics-collector
+
+# Option A: direct run on the login node (fine for short/light workloads;
+# check your cluster's usage policy before running heavier jobs here)
+./execution-metrics-collector ~/my_metrics my_command --arg1 --arg2
+
+# Option B: interactive job via Slurm (salloc) — recommended for anything
+# that needs dedicated compute resources rather than sharing the login node
+salloc -n 1 -c 4 -t 00:30:00   # adjust cores/time/partition to your cluster
+# once the allocation starts and you're placed on a compute node:
+./execution-metrics-collector ~/my_metrics my_command --arg1 --arg2
+exit   # ends the salloc session when done
+
+# This creates ~/my_metrics/<timestamp>-<pid>/ with the raw CSV/TSV metrics
+# (from whichever of the two runs above you used)
+
+# ── 4. Bring the metrics directory back to the laptop ──────────────────────
+# (run from the laptop)
+scp -r your-user@your-hpc-login-node:~/my_metrics/<timestamp>-<pid> ./my_metrics/
+
+# ── 5. On the laptop: set up a normal treecript environment for analysis ───
+# (analysis tools — plotGraph, tdp-finder, metrics-aggregator — don't need
+#  to run on the HPC node itself; a regular venv/conda install is enough)
+python3 -m venv TREECRIPT
+source TREECRIPT/bin/activate
+pip install --upgrade pip wheel
+pip install -c constraints-3.12.txt 'treecript[analytics,docker] @ git+https://github.com/inab/treecript.git@exec'
+
+# ── 6. Get a CPU dataset for TDP lookups (once) ─────────────────────────────
+git clone https://github.com/JosuaCarl/cpu-spec-dataset cpu-spec-dataset_Josua
+
+# ── 7. Plot time series charts ──────────────────────────────────────────────
+plotGraph ./my_metrics/<timestamp>-<pid>/ ./my_charts/
+
+# ── 8. Find the HPC node's CPU TDP ──────────────────────────────────────────
+# Use the model name reported by `lscpu` (or /proc/cpuinfo) on the HPC node,
+# e.g. "Intel(R) Xeon(R) Platinum 8480+"
+tdp-finder ./my_metrics/<timestamp>-<pid>/ cpu-spec-dataset_Josua/dataset/*.csv
+# Model [Intel(R) Xeon(R) Platinum 8480+] => TDP [MaxTDP] => 350.0 W
+
+# ── 9. Aggregate and estimate energy consumption ────────────────────────────
+metrics-aggregator ./my_metrics/<timestamp>-<pid>/ ./my_agg/ 350.0
+```
+
+> **Tip:** if `tdp-finder` prints `Unable to match a valid processor row` for some of the CSV sources you passed, that's normal — different sources use slightly different naming conventions for the same CPU. `tdp-finder` tries each file in order and stops at the first match; passing several sources increases the odds of a hit. The official vendor CSVs (e.g. `intel-cpus.csv`) tend to be the most reliable matches.
+
+---
+
 ### Verifying the installation
 
-Run this after either installation method to confirm all dependencies are working correctly:
+> **⚠️ Not applicable to the Option 4 binary itself.** This check requires a Python environment with `treecript` importable, which the standalone binary from [Option 4](#option-4-standalone-binary-pyinstaller) intentionally does **not** provide (that's the whole point of a monolithic executable — see the note right below instead). This check **does** apply to the local analysis environment you create in [Option 4's full workflow example](#full-workflow-example-hpc-metrics-collection--local-analysis) step 5 (the `python3 -m venv TREECRIPT` used to run `plotGraph`, `tdp-finder` and `metrics-aggregator` locally) — it's a completely separate, ordinary Option 2/3-style install, just used alongside the binary rather than instead of it.
+
+Run this after Option 2 (pip + venv) or Option 3 (Conda) — or after setting up the local analysis environment from Option 4's workflow example — to confirm all dependencies are working correctly:
 
 ```bash
 python -c "
@@ -295,6 +547,8 @@ import adjustText; print('adjustText OK:', adjustText.__version__)
 import treecript; print('treecript OK')
 "
 ```
+
+> For the **Option 4 binary itself**, there is no Python environment to verify this way — simply run the binary, e.g. `./execution-metrics-collector` with no arguments, and confirm it prints its usage message.
 
 ---
 
@@ -474,6 +728,8 @@ You can pass multiple sources to the TDP programs and they will be tried in orde
 tdp-finder ~/metrics/dir/ cpu-spec-dataset_Josua/dataset/*.csv cpumark_table.csv
 ```
 
+> **Tip:** if `tdp-finder` logs `Unable to match a valid processor row` for one of your CSV sources, that's usually just that particular source's naming convention not matching your `/proc/cpuinfo` model string exactly (e.g. extra vendor symbols, or `[Dual CPU]` prefixes for multi-socket listings). This is expected when passing several sources — `tdp-finder` simply moves on to the next file until it finds a match. The `intel-cpus.csv` / `ampere-cpus.csv` sources (official vendor data) tend to match most reliably for their respective vendors.
+
 ---
 
 ## Output Files Reference
@@ -481,7 +737,7 @@ tdp-finder ~/metrics/dir/ cpu-spec-dataset_Josua/dataset/*.csv cpumark_table.csv
 Each `execution-metrics-collector` run creates a subdirectory named after the start timestamp and PID. It contains:
 
 | File                               | Description                                                    |
-| ---------------------------------- | -------------------------------------------------------------- |
+| ----------------------------------- | -------------------------------------------------------------- |
 | `reference_pid.txt`                | PID of the root process being monitored                        |
 | `sampling-rate-seconds.txt`        | Sampling rate in seconds (usually 1)                           |
 | `pids.txt`                         | Table of all spawned processes with timestamps and parent PIDs |
@@ -495,7 +751,7 @@ Each `execution-metrics-collector` run creates a subdirectory named after the st
 ### Per-process metrics (`metrics-{pid}_{create_time}.csv`)
 
 | Column            | Description                                                                   |
-| ----------------- | ----------------------------------------------------------------------------- |
+| ----------------- | ------------------------------------------------------------------------------ |
 | `Time`            | Sample timestamp                                                              |
 | `PID`             | Process ID                                                                    |
 | `Virt`            | Virtual memory size (matches `top` VIRT)                                      |
@@ -530,7 +786,7 @@ Each `execution-metrics-collector` run creates a subdirectory named after the st
 Each row is a 1-second sample across all monitored processes combined:
 
 | Column         | Description                              |
-| -------------- | ---------------------------------------- |
+| -------------- | ----------------------------------------- |
 | Timestamp      | Sample time                              |
 | Number of PIDs | Processes monitored at that moment       |
 | Threads        | Total thread count                       |
